@@ -11,6 +11,7 @@ import { initMomentumWebSocket } from "../momentumWebSocket";
 import { authApiRouter } from "../authRouter";
 import { backtestApiRouter } from "../backtestRouter";
 import { startCacheRefreshTask } from "../socialMediaCacheManager";
+import { startRecommendationScheduler } from "../recommendationScheduler";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -70,6 +71,8 @@ async function startServer() {
     console.log(`Server running on http://localhost:${port}/`);
     // 启动缓存刷新任务
     startCacheRefreshTask();
+    // 启动推荐股票调度器
+    startRecommendationScheduler();
   });
 }
 

@@ -552,7 +552,7 @@ export const stockRouter = router({
     }),
 
   // Get recommended momentum stocks
-  // Simplified version: returns top gainers with high volume
+  // Advanced version: multi-timeframe technical analysis
   getRecommendedStocks: publicProcedure
     .query(async () => {
       const cacheKey = 'recommendedStocks';
@@ -560,51 +560,51 @@ export const stockRouter = router({
       if (cached) return cached;
 
       try {
+        const { calculateRecommendationScore } = await import('./advancedRecommendation');
         const { US_STOCKS } = await import('../shared/stockPool');
         
-        const recommended: Array<{ 
-          symbol: string; 
-          price: number; 
-          changePercent: number;
-          reason: string;
-        }> = [];
-
-        // Check top 30 stocks by popularity
-        const stocksToCheck = US_STOCKS.slice(0, 30);
-
-        for (const symbol of stocksToCheck) {
-          try {
-            const response = await axios.get(`https://query1.finance.yahoo.com/v8/finance/chart/${symbol}`, {
-              params: { interval: '1d', range: '5d' },
-              timeout: 5000,
-            });
-
-            const result = response.data?.chart?.result?.[0];
-            if (!result) continue;
-
-            const meta = result.meta;
-            const changePercent = ((meta.regularMarketPrice - meta.chartPreviousClose) / meta.chartPreviousClose) * 100;
-
-            // Recommend stocks with positive momentum (>2% gain)
-            if (changePercent > 2) {
-              recommended.push({
-                symbol,
-                price: meta.regularMarketPrice || 0,
-                changePercent,
-                reason: '强势上涨，动能良好',
-              });
-            }
-          } catch (err) {
-            // Skip failed stocks
+        // Check top 50 stocks by popularity
+        const stocksToCheck = US_STOCKS.slice(0, 50);
+        
+        console.log(`[Recommendation] Analyzing ${stocksToCheck.length} stocks...`);
+        
+        // Calculate scores for all stocks (with concurrency limit)
+        const scores = [];
+        const batchSize = 5; // Process 5 stocks at a time to avoid rate limiting
+        
+        for (let i = 0; i < stocksToCheck.length; i += batchSize) {
+          const batch = stocksToCheck.slice(i, i + batchSize);
+          const batchResults = await Promise.all(
+            batch.map(symbol => calculateRecommendationScore(symbol))
+          );
+          scores.push(...batchResults.filter(s => s !== null));
+          
+          // Small delay between batches
+          if (i + batchSize < stocksToCheck.length) {
+            await new Promise(resolve => setTimeout(resolve, 1000));
           }
         }
-
-        // Sort by change percent and take top 10
-        const topRecommended = recommended
-          .sort((a, b) => b.changePercent - a.changePercent)
-          .slice(0, 10);
-
-        setCache(cacheKey, topRecommended, 600000); // 10 minutes
+        
+        console.log(`[Recommendation] Got ${scores.length} valid scores`);
+        
+        // Filter stocks with totalScore > 30 (有一定信号强度)
+        const qualified = scores.filter(s => s!.totalScore > 30);
+        
+        // Sort by total score (descending)
+        const topRecommended = qualified
+          .sort((a, b) => b!.totalScore - a!.totalScore)
+          .slice(0, 10)
+          .map(s => ({
+            symbol: s!.symbol,
+            price: s!.price,
+            changePercent: s!.changePercent,
+            reason: s!.reason,
+            totalScore: s!.totalScore,
+          }));
+        
+        console.log(`[Recommendation] Top 10:`, topRecommended.map(s => `${s.symbol}(${s.totalScore.toFixed(1)})`).join(', '));
+        
+        setCache(cacheKey, topRecommended, 1800000); // 30 minutes cache
         return topRecommended;
       } catch (error: any) {
         console.error('Failed to fetch recommended stocks:', error.message);
