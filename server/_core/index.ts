@@ -7,7 +7,6 @@ import { registerOAuthRoutes } from "./oauth";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
-import { initMomentumWebSocket } from "../momentumWebSocket";
 import { authApiRouter } from "../authRouter";
 import { backtestApiRouter } from "../backtestRouter";
 import { startCacheRefreshTask } from "../socialMediaCacheManager";
@@ -51,8 +50,7 @@ async function startServer() {
       createContext,
     })
   );
-  // Initialize WebSocket for momentum updates (before Vite to avoid HMR conflicts)
-  initMomentumWebSocket(server);
+
   // development mode uses Vite, production mode uses static files
   if (process.env.NODE_ENV === "development") {
     await setupVite(app, server);

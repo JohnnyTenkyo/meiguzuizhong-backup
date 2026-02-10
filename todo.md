@@ -122,3 +122,10 @@
 - [x] 修复 key 重复问题(添加板块名称和索引)
 - [x] 测试首页(没有控制台错误)
 - [ ] 创建新的 checkpoint
+
+## 修复 WebSocket 连接错误
+- [x] 找到 WebSocket 连接代码(momentumWebSocket.ts)
+- [x] 判断 WebSocket 是否必要(不必要,前端没有使用)
+- [x] 删除不必要的 WebSocket 代码
+- [x] 测试首页(没有 WebSocket 错误)
+- [ ] 创建新的 checkpoint
