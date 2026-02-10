@@ -15,6 +15,13 @@
       "when": 1770747412839,
       "tag": "0001_watery_surge",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1770749643669,
+      "tag": "0002_lucky_steel_serpent",
+      "breakpoints": true
     }
   ]
 }

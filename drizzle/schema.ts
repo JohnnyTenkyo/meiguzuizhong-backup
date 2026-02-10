@@ -52,7 +52,7 @@ export const backtestSessions = mysqlTable("backtest_sessions", {
   currentBalance: decimal("currentBalance", { precision: 16, scale: 2 }).notNull(),
   totalAssets: decimal("totalAssets", { precision: 16, scale: 2 }),
   totalPnL: decimal("totalPnL", { precision: 16, scale: 2 }),
-  totalPnLpercent: decimal("totalPnLpercent", { precision: 10, scale: 4 }),
+  totalPnLPercent: decimal("totalPnLPercent", { precision: 10, scale: 4 }),
   startDate: bigint("startDate", { mode: "number" }).notNull(),
   currentDate: bigint("currentDate", { mode: "number" }).notNull(),
   currentInterval: varchar("currentInterval", { length: 10 }).default("1d"),
