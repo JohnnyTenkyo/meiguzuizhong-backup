@@ -366,26 +366,80 @@ export default function Home() {
             </div>
           ) : recommendedStocks && recommendedStocks.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-              {recommendedStocks.map((stock: any) => (
-                <div
-                  key={stock.symbol}
-                  onClick={() => handleStockClick(stock.symbol)}
-                  className="rounded-lg border border-primary/30 bg-primary/5 hover:bg-primary/10 cursor-pointer transition-colors p-3 flex flex-col gap-2"
-                >
-                  <span className="font-bold text-base tracking-wide">{stock.symbol}</span>
-                  <p className="text-xs text-muted-foreground line-clamp-2">{stock.reason}</p>
-                  <div className="flex flex-col gap-1 mt-auto">
-                    <span className="data-mono text-sm font-medium">${stock.price.toFixed(2)}</span>
-                    <span className={`data-mono text-xs px-2 py-1 rounded font-medium text-center ${
-                      stock.changePercent >= 0 
-                        ? 'text-red-500 bg-red-500/10' 
-                        : 'text-green-500 bg-green-500/10'
-                    }`}>
-                      {stock.changePercent >= 0 ? '+' : ''}{stock.changePercent.toFixed(2)}%
-                    </span>
+              {recommendedStocks.map((stock: any) => {
+                const isStrongRecommendation = stock.totalScore && stock.totalScore > 80;
+                return (
+                  <div
+                    key={stock.symbol}
+                    onClick={() => handleStockClick(stock.symbol)}
+                    className={`rounded-lg border cursor-pointer transition-all p-3 flex flex-col gap-2 relative ${
+                      isStrongRecommendation 
+                        ? 'border-yellow-500/50 bg-yellow-500/5 hover:bg-yellow-500/10 shadow-lg shadow-yellow-500/20' 
+                        : 'border-primary/30 bg-primary/5 hover:bg-primary/10'
+                    }`}
+                  >
+                    {/* 强力推荐徽章 */}
+                    {isStrongRecommendation && (
+                      <div className="absolute -top-2 -right-2 bg-gradient-to-r from-yellow-500 to-orange-500 text-white text-xs font-bold px-2 py-1 rounded-full shadow-lg flex items-center gap-1">
+                        <span>★</span>
+                        <span>强力推荐</span>
+                      </div>
+                    )}
+                    
+                    {/* 股票代码 */}
+                    <span className="font-bold text-base tracking-wide">{stock.symbol}</span>
+                    
+                    {/* 推荐理由 */}
+                    <p className="text-xs text-muted-foreground line-clamp-2">{stock.reason}</p>
+                    
+                    {/* 评分详情 */}
+                    {stock.totalScore !== undefined && (
+                      <div className="flex flex-col gap-1.5 mt-2 p-2 rounded bg-background/50 border border-border/50">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs text-muted-foreground">总评分</span>
+                          <span className={`text-sm font-bold ${
+                            stock.totalScore > 80 ? 'text-yellow-500' :
+                            stock.totalScore > 60 ? 'text-blue-500' :
+                            'text-muted-foreground'
+                          }`}>
+                            {stock.totalScore.toFixed(1)}
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-1">
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="text-muted-foreground">梯子</span>
+                            <span className="font-medium">{(stock.priority1Score || 0).toFixed(0)}</span>
+                          </div>
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="text-muted-foreground">禅动</span>
+                            <span className="font-medium">{(stock.priority2Score || 0).toFixed(0)}</span>
+                          </div>
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="text-muted-foreground">缠论</span>
+                            <span className="font-medium">{(stock.priority3Score || 0).toFixed(0)}</span>
+                          </div>
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="text-muted-foreground">动能</span>
+                            <span className="font-medium">{(stock.priority4Score || 0).toFixed(0)}</span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    
+                    {/* 价格和涨跌幅 */}
+                    <div className="flex flex-col gap-1 mt-auto">
+                      <span className="data-mono text-sm font-medium">${stock.price.toFixed(2)}</span>
+                      <span className={`data-mono text-xs px-2 py-1 rounded font-medium text-center ${
+                        stock.changePercent >= 0 
+                          ? 'text-red-500 bg-red-500/10' 
+                          : 'text-green-500 bg-green-500/10'
+                      }`}>
+                        {stock.changePercent >= 0 ? '+' : ''}{stock.changePercent.toFixed(2)}%
+                      </span>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           ) : (
             <p className="text-sm text-muted-foreground">暂无数据</p>
