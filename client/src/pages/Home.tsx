@@ -473,9 +473,9 @@ export default function Home() {
                 <div key={sector} className="rounded-lg border border-border bg-card p-4 flex flex-col gap-3">
                   <h3 className="text-sm font-bold">{(SECTOR_NAMES as any)[sector] || sector}</h3>
                   <div className="space-y-2">
-                    {stocks.slice(0, 3).map((stock: any) => (
+                    {stocks.slice(0, 3).map((stock: any, idx: number) => (
                       <div
-                        key={stock.symbol}
+                        key={`${sector}-${stock.symbol}-${idx}`}
                         onClick={() => handleStockClick(stock.symbol)}
                         className="flex items-center justify-between text-sm cursor-pointer hover:text-primary transition-colors p-2 rounded hover:bg-accent/50"
                       >
