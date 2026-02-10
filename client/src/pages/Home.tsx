@@ -376,8 +376,12 @@ export default function Home() {
                   <p className="text-xs text-muted-foreground line-clamp-2">{stock.reason}</p>
                   <div className="flex flex-col gap-1 mt-auto">
                     <span className="data-mono text-sm font-medium">${stock.price.toFixed(2)}</span>
-                    <span className="data-mono text-xs px-2 py-1 rounded font-medium text-red-500 bg-red-500/10 text-center">
-                      +{stock.changePercent.toFixed(2)}%
+                    <span className={`data-mono text-xs px-2 py-1 rounded font-medium text-center ${
+                      stock.changePercent >= 0 
+                        ? 'text-red-500 bg-red-500/10' 
+                        : 'text-green-500 bg-green-500/10'
+                    }`}>
+                      {stock.changePercent >= 0 ? '+' : ''}{stock.changePercent.toFixed(2)}%
                     </span>
                   </div>
                 </div>
