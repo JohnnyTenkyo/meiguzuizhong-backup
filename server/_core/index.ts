@@ -7,6 +7,10 @@ import { registerOAuthRoutes } from "./oauth";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
+import { initMomentumWebSocket } from "../momentumWebSocket";
+import { authApiRouter } from "../authRouter";
+import { backtestApiRouter } from "../backtestRouter";
+import { startCacheRefreshTask } from "../socialMediaCacheManager";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -35,6 +39,9 @@ async function startServer() {
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
   // OAuth callback under /api/oauth/callback
   registerOAuthRoutes(app);
+  // Custom API routes
+  app.use("/api/auth", authApiRouter);
+  app.use("/api/backtest", backtestApiRouter);
   // tRPC API
   app.use(
     "/api/trpc",
@@ -43,6 +50,8 @@ async function startServer() {
       createContext,
     })
   );
+  // Initialize WebSocket for momentum updates (before Vite to avoid HMR conflicts)
+  initMomentumWebSocket(server);
   // development mode uses Vite, production mode uses static files
   if (process.env.NODE_ENV === "development") {
     await setupVite(app, server);
@@ -59,6 +68,8 @@ async function startServer() {
 
   server.listen(port, () => {
     console.log(`Server running on http://localhost:${port}/`);
+    // 启动缓存刷新任务
+    startCacheRefreshTask();
   });
 }
 
