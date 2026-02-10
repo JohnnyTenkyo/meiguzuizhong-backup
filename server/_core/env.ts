@@ -7,4 +7,11 @@ export const ENV = {
   isProduction: process.env.NODE_ENV === "production",
   forgeApiUrl: process.env.BUILT_IN_FORGE_API_URL ?? "",
   forgeApiKey: process.env.BUILT_IN_FORGE_API_KEY ?? "",
+  finnhubApiKey: process.env.FINNHUB_API_KEY ?? "",
+  alphaVantageApiKey: process.env.ALPHAVANTAGE_API_KEY ?? "",
+  massiveApiKey: process.env.MASSIVE_API_KEY ?? "",
+  twitterAuthToken: process.env.TWITTER_AUTH_TOKEN ?? "",
+  twitterCt0: process.env.TWITTER_CT0 ?? "",
+  alphamoeFociApiKey: process.env.ALPHAMOE_FOCI_API_KEY ?? "",
+  polygonIoApiKey: process.env.POLYGON_IO_API_KEY ?? "",
 };
