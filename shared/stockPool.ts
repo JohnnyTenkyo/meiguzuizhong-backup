@@ -4,6 +4,9 @@ export type StockSector =
   | 'Semiconductor' // 半导体
   | 'Bitcoin' // 比特币/加密货币
   | 'EV' // 电动车
+  | 'Quantum' // 量子计算
+  | 'Storage' // 存储
+  | 'RareEarth' // 稀土
   | 'Cloud' // 云计算
   | 'Fintech' // 金融科技
   | 'Energy' // 能源
@@ -43,7 +46,7 @@ export const STOCK_POOL: StockInfo[] = [
   { symbol: 'ASML', sectors: ['Semiconductor'] },
   { symbol: 'INTC', sectors: ['Semiconductor'] },
   { symbol: 'QCOM', sectors: ['Semiconductor'] },
-  { symbol: 'MU', sectors: ['Semiconductor'] },
+  { symbol: 'MU', sectors: ['Semiconductor', 'Storage'] },
   { symbol: 'MRVL', sectors: ['Semiconductor'] },
   { symbol: 'ARM', sectors: ['AI', 'Semiconductor'] },
   { symbol: 'SMCI', sectors: ['AI', 'Semiconductor'] },
@@ -74,10 +77,11 @@ export const STOCK_POOL: StockInfo[] = [
   { symbol: 'GM', sectors: ['EV'] },
   
   // 量子计算概念股
-  { symbol: 'IONQ', sectors: ['AI', 'Tech'] },
-  { symbol: 'RGTI', sectors: ['AI', 'Tech'] },
-  { symbol: 'QUBT', sectors: ['AI', 'Tech'] },
-  { symbol: 'QBTS', sectors: ['AI', 'Tech'] },
+  { symbol: 'IONQ', sectors: ['Quantum', 'Tech'] },
+  { symbol: 'RGTI', sectors: ['Quantum', 'Tech'] },
+  { symbol: 'QUBT', sectors: ['Quantum', 'Tech'] },
+  { symbol: 'QBTS', sectors: ['Quantum', 'Tech'] },
+  { symbol: 'QMCO', sectors: ['Quantum', 'Tech'] },
   
   // 金融科技
   { symbol: 'SOFI', sectors: ['Fintech'] },
@@ -184,8 +188,8 @@ export const STOCK_POOL: StockInfo[] = [
   { symbol: 'FIG', sectors: ['Other'] },
   { symbol: 'SBET', sectors: ['Other'] },
   { symbol: 'TEM', sectors: ['Other'] },
-  { symbol: 'MP', sectors: ['Other'] },
-  { symbol: 'STX', sectors: ['Tech'] },
+  { symbol: 'MP', sectors: ['RareEarth'] }, // 稀土元素
+  { symbol: 'STX', sectors: ['Storage', 'Tech'] },
   { symbol: 'AGQ', sectors: ['ETF'] },
   { symbol: 'FMCC', sectors: ['Other'] },
   { symbol: 'FNMA', sectors: ['Other'] },
@@ -205,8 +209,8 @@ export const STOCK_POOL: StockInfo[] = [
   { symbol: 'BETR', sectors: ['Other'] },
   { symbol: 'SNGX', sectors: ['Other'] },
   { symbol: 'DGNX', sectors: ['Other'] },
-  { symbol: 'SNDK', sectors: ['Tech'] },
-  { symbol: 'WDC', sectors: ['Tech'] },
+  { symbol: 'SNDK', sectors: ['Storage', 'Tech'] },
+  { symbol: 'WDC', sectors: ['Storage', 'Tech'] },
   { symbol: 'QS', sectors: ['EV'] },
   { symbol: 'NNE', sectors: ['Other'] },
   { symbol: 'SERV', sectors: ['Other'] },
@@ -263,7 +267,7 @@ export const STOCK_POOL: StockInfo[] = [
   { symbol: 'BULL', sectors: ['Other'] },
   { symbol: 'TMC', sectors: ['Other'] },
   { symbol: 'B', sectors: ['Other'] },
-  { symbol: 'NEM', sectors: ['Other'] },
+  { symbol: 'NEM', sectors: ['RareEarth'] }, // 稀土/黄金
   { symbol: 'BRK.B', sectors: ['Other'] },
   { symbol: 'PM', sectors: ['Other'] },
   { symbol: 'KHC', sectors: ['Other'] },
@@ -822,6 +826,9 @@ export const SECTOR_NAMES: Record<StockSector, string> = {
   'Semiconductor': '半导体',
   'Bitcoin': '比特币/加密货币',
   'EV': '电动车',
+  'Quantum': '量子计算',
+  'Storage': '存储',
+  'RareEarth': '稀土',
   'Cloud': '云计算',
   'Fintech': '金融科技',
   'Energy': '能源',

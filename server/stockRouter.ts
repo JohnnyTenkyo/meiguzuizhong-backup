@@ -626,7 +626,7 @@ export const stockRouter = router({
         // Import stock pool
         const { STOCK_POOL, SECTOR_NAMES, getStocksBySector } = await import('../shared/stockPool');
         
-        const sectors = ['AI', 'Semiconductor', 'Bitcoin', 'EV', 'Cloud', 'Energy'];
+        const sectors = ['AI', 'Semiconductor', 'Bitcoin', 'Quantum', 'Storage', 'RareEarth', 'Cloud', 'Energy'];
         const rankings: Record<string, any[]> = {};
 
         for (const sector of sectors) {
