@@ -425,37 +425,40 @@ export interface RecommendationScore {
 
 export async function calculateRecommendationScore(symbol: string): Promise<RecommendationScore | null> {
   try {
-    // 获取多时间级别K线数据
-    const [candles30m, candles1h, candles2h, candles3h, candles4h, candlesDaily] = await Promise.all([
+    // 获取多时间级别K线数据(Yahoo Finance 不支持2h/3h/4h,用1h和1d代替)
+    const [candles30m, candles1h, candlesDaily] = await Promise.all([
       fetchCandles(symbol, '30m', '5d'),
       fetchCandles(symbol, '1h', '1mo'),
-      fetchCandles(symbol, '2h', '2mo'),
-      fetchCandles(symbol, '3h', '3mo'),
-      fetchCandles(symbol, '4h', '6mo'),
       fetchCandles(symbol, '1d', '1y'),
     ]);
     
-    if (candles30m.length === 0) return null;
+    // 至少需要日线数据才能计算
+    if (candlesDaily.length === 0) return null;
     
-    // 优先级1:梯子穿越(30分钟+多时间级别)
-    const ladder30m = calculateLadder(candles30m);
-    const priority1Score = checkLadderCross(candles30m, ladder30m) * 0.7 + 
-                          checkMultiTimeframeLadder(candles4h, candles3h, candles2h, candles1h) * 0.3;
+    // 优先级1:梯子穿越(30分钟+1小时)
+    let priority1Score = 0;
+    if (candles30m.length > 0) {
+      const ladder30m = calculateLadder(candles30m);
+      priority1Score += checkLadderCross(candles30m, ladder30m) * 0.7;
+    }
+    if (candles1h.length > 0) {
+      const ladder1h = calculateLadder(candles1h);
+      priority1Score += checkLadderCross(candles1h, ladder1h) * 0.3;
+    }
     
-    // 优先级2:禅动指标(多时间级别)
+    // 优先级2:禅动指标(日线+1小时)
     let priority2Score = 0;
-    if (candlesDaily.length > 0) priority2Score += checkCDSignal(candlesDaily) * 0.4;
-    if (candles4h.length > 0) priority2Score += checkCDSignal(candles4h) * 0.3;
-    if (candles2h.length > 0) priority2Score += checkCDSignal(candles2h) * 0.2;
-    if (candles1h.length > 0) priority2Score += checkCDSignal(candles1h) * 0.1;
+    if (candlesDaily.length > 0) priority2Score += checkCDSignal(candlesDaily) * 0.7;
+    if (candles1h.length > 0) priority2Score += checkCDSignal(candles1h) * 0.3;
     
-    // 优先级3:缠论分型(日线+4小时)
+    // 优先级3:缠论分型(日线+1小时)
     let priority3Score = 0;
-    if (candlesDaily.length > 0) priority3Score += checkChanLunSignal(candlesDaily) * 0.6;
-    if (candles4h.length > 0) priority3Score += checkChanLunSignal(candles4h) * 0.4;
+    if (candlesDaily.length > 0) priority3Score += checkChanLunSignal(candlesDaily) * 0.7;
+    if (candles1h.length > 0) priority3Score += checkChanLunSignal(candles1h) * 0.3;
     
-    // 优先级4:买卖动能
-    const priority4Score = checkMomentumSignal(candles30m);
+    // 优先级4:买卖动能(优先使用30分钟,否则使用1小时)
+    const momentumCandles = candles30m.length > 0 ? candles30m : candles1h;
+    const priority4Score = momentumCandles.length > 0 ? checkMomentumSignal(momentumCandles) : 0;
     
     // 综合评分(加权)
     const totalScore = priority1Score * 0.4 + 
@@ -463,9 +466,10 @@ export async function calculateRecommendationScore(symbol: string): Promise<Reco
                       priority3Score * 0.2 + 
                       priority4Score * 0.1;
     
-    // 获取当前价格和涨跌幅
-    const lastCandle = candles30m[candles30m.length - 1];
-    const firstCandle = candles30m[0];
+    // 获取当前价格和涨跌幅(优先使用30分钟,否则使用1小时或日线)
+    const priceCandles = candles30m.length > 0 ? candles30m : (candles1h.length > 0 ? candles1h : candlesDaily);
+    const lastCandle = priceCandles[priceCandles.length - 1];
+    const firstCandle = priceCandles[0];
     const changePercent = ((lastCandle.close - firstCandle.open) / firstCandle.open) * 100;
     
     // 生成推荐理由

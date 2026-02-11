@@ -587,19 +587,22 @@ export const stockRouter = router({
         
         console.log(`[Recommendation] Got ${scores.length} valid scores`);
         
-        // Filter stocks with totalScore > 30 (有一定信号强度)
-        const qualified = scores.filter(s => s!.totalScore > 30);
-        
         // Sort by total score (descending)
-        const topRecommended = qualified
-          .sort((a, b) => b!.totalScore - a!.totalScore)
-          .slice(0, 10)
+        const sorted = scores.sort((a, b) => b!.totalScore - a!.totalScore);
+        
+        // 确保至少返回8个推荐(即使分数较低)
+        const minRecommendations = 8;
+        const topRecommended = sorted.slice(0, Math.max(minRecommendations, 10))
           .map(s => ({
             symbol: s!.symbol,
             price: s!.price,
             changePercent: s!.changePercent,
             reason: s!.reason,
             totalScore: s!.totalScore,
+            priority1Score: s!.priority1Score,
+            priority2Score: s!.priority2Score,
+            priority3Score: s!.priority3Score,
+            priority4Score: s!.priority4Score,
           }));
         
         console.log(`[Recommendation] Top 10:`, topRecommended.map(s => `${s.symbol}(${s.totalScore.toFixed(1)})`).join(', '));
