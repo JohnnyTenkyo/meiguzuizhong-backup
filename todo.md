@@ -149,3 +149,35 @@
 - [x] 添加稀土板块
 - [x] 测试板块榜显示(Quantum 5个股票, Storage 4个股票, RareEarth 2个股票)
 - [ ] 创建新的 checkpoint
+
+## 修复 DDOG key 重复问题
+- [x] 找到 DDOG key 重复的位置(板块榜部分)
+- [x] 修复 key 重复问题(已在之前修复)
+- [x] 测试首页(没有控制台错误)
+
+## 优化板块股票池
+- [x] 为 AI 板块补充更多股票(+5: PATH/ADBE/NOW/DOMO/GTLB)
+- [x] 为 Semiconductor 板块补充更多股票(+6: TXN/ADI/NXPI/KLAC/LRCX/AMAT)
+- [x] 为 Bitcoin 板块补充更多股票(+3: BITF/WULF/CORZ)
+- [x] 为 Quantum 板块补充更多股票(+2: ARQQ/QTUM)
+- [x] 为 Storage 板块补充更多股票(+2: PSTG/NTAP)
+- [x] 为 RareEarth 板块补充更多股票(+2: REMX/LIT)
+- [x] 为 Cloud 板块补充更多股票(+4: TEAM/WDAY/VEEV/OKTA)
+- [x] 为 Energy 板块补充更多股票(+3: ENPH/RUN/NEE)
+
+## 添加板块详情页
+- [x] 创建板块详情页组件
+- [x] 添加板块详情页路由
+- [x] 实现板块股票列表展示
+- [x] 添加板块整体涨跌幅统计
+- [x] 在首页板块榜中添加点击跳转功能
+- [x] 测试板块详情页
+
+## 检查推荐动能股定时更新
+- [x] 检查定时任务配置(正常启动)
+- [x] 验证定时更新是否正常工作(当前不在时间段内,正常)
+- [x] 测试推荐股票刷新(调度器配置正确)
+
+## 最终测试
+- [x] 测试所有功能
+- [ ] 创建新的 checkpoint

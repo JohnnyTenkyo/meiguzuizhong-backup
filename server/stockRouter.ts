@@ -681,4 +681,72 @@ export const stockRouter = router({
         return {};
       }
     }),
+
+  // Get all stocks in a sector with real-time prices
+  getSectorStocks: publicProcedure
+    .input(z.object({ sector: z.string() }))
+    .query(async ({ input }) => {
+      const { sector } = input;
+      const cacheKey = `sectorStocks:${sector}`;
+      const cached = getCached<any>(cacheKey);
+      if (cached) return cached;
+
+      try {
+        // Import stock pool
+        const { getStocksBySector } = await import('../shared/stockPool');
+        const stocks = getStocksBySector(sector as any);
+        const sectorStocks: Array<{ symbol: string; name?: string; price: number | null; changePercent: number | null }> = [];
+
+        for (const symbol of stocks) {
+          try {
+            const quoteKey = `quote:${symbol}`;
+            let quote = getCached<any>(quoteKey);
+            
+            if (!quote) {
+              const response = await axios.get(`https://query1.finance.yahoo.com/v8/finance/chart/${symbol}`, {
+                params: { interval: '1d', range: '1d' },
+                timeout: 5000,
+              });
+
+              const result = response.data?.chart?.result?.[0];
+              if (!result) {
+                sectorStocks.push({ symbol, price: null, changePercent: null });
+                continue;
+              }
+
+              const meta = result.meta;
+              quote = {
+                name: meta.longName || meta.shortName || symbol,
+                price: meta.regularMarketPrice || 0,
+                changePercent: ((meta.regularMarketPrice - meta.chartPreviousClose) / meta.chartPreviousClose) * 100,
+              };
+              
+              setCache(quoteKey, quote, 60000);
+            }
+
+            sectorStocks.push({
+              symbol,
+              name: quote.name,
+              price: quote.price,
+              changePercent: quote.changePercent,
+            });
+          } catch (err) {
+            sectorStocks.push({ symbol, price: null, changePercent: null });
+          }
+        }
+
+        // Sort by change percent (descending)
+        const sorted = sectorStocks.sort((a, b) => {
+          if (a.changePercent === null) return 1;
+          if (b.changePercent === null) return -1;
+          return b.changePercent - a.changePercent;
+        });
+
+        setCache(cacheKey, sorted, 300000); // 5 minutes
+        return sorted;
+      } catch (error: any) {
+        console.error(`Failed to fetch sector stocks for ${sector}:`, error.message);
+        return [];
+      }
+    }),
 });

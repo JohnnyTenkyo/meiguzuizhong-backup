@@ -14,6 +14,7 @@ import Screener from "./pages/Screener";
 import Login from "./pages/Login";
 import Backtest from "./pages/Backtest";
 import BacktestSimulator from "./pages/BacktestSimulator";
+import SectorDetail from "./pages/SectorDetail";
 import { Loader2 } from "lucide-react";
 
 function ProtectedRoute({ component: Component, ...rest }: { component: React.ComponentType<any>; path: string }) {
@@ -51,6 +52,7 @@ function Router() {
       <Route path="/backtest/:id">
         {() => <ProtectedRoute path="/backtest/:id" component={BacktestSimulator} />}
       </Route>
+      <Route path="/sector/:sector" component={SectorDetail} />
       <Route path={"/404"} component={NotFound} />
       <Route component={NotFound} />
     </Switch>

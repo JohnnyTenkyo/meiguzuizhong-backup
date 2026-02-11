@@ -38,6 +38,11 @@ export const STOCK_POOL: StockInfo[] = [
   { symbol: 'AI', sectors: ['AI', 'Tech'] },
   { symbol: 'BBAI', sectors: ['AI', 'Tech'] },
   { symbol: 'SOUN', sectors: ['AI', 'Tech'] },
+  { symbol: 'PATH', sectors: ['AI', 'Tech'] }, // UiPath - RPA自动化
+  { symbol: 'ADBE', sectors: ['AI', 'Tech'] }, // Adobe - AI创意工具
+  { symbol: 'NOW', sectors: ['AI', 'Cloud', 'Tech'] }, // ServiceNow - AI企业服务
+  { symbol: 'DOMO', sectors: ['AI', 'Tech'] }, // Domo - AI数据分析
+  { symbol: 'GTLB', sectors: ['AI', 'Tech'] }, // GitLab - AI开发平台
   
   // 半导体股
   { symbol: 'AMD', sectors: ['AI', 'Semiconductor'] },
@@ -52,6 +57,12 @@ export const STOCK_POOL: StockInfo[] = [
   { symbol: 'SMCI', sectors: ['AI', 'Semiconductor'] },
   { symbol: 'MCHP', sectors: ['Semiconductor'] },
   { symbol: 'SOXL', sectors: ['Semiconductor', 'ETF'] }, // 3倍做多半导体ETF
+  { symbol: 'TXN', sectors: ['Semiconductor'] }, // Texas Instruments
+  { symbol: 'ADI', sectors: ['Semiconductor'] }, // Analog Devices
+  { symbol: 'NXPI', sectors: ['Semiconductor'] }, // NXP Semiconductors
+  { symbol: 'KLAC', sectors: ['Semiconductor'] }, // KLA Corporation
+  { symbol: 'LRCX', sectors: ['Semiconductor'] }, // Lam Research
+  { symbol: 'AMAT', sectors: ['Semiconductor'] }, // Applied Materials
   
   // 比特币/加密货币概念股
   { symbol: 'MSTR', sectors: ['Bitcoin'] },
@@ -66,6 +77,9 @@ export const STOCK_POOL: StockInfo[] = [
   { symbol: 'APLD', sectors: ['Bitcoin'] },
   { symbol: 'BTC', sectors: ['Bitcoin'] },
   { symbol: 'BTQ', sectors: ['Bitcoin'] },
+  { symbol: 'BITF', sectors: ['Bitcoin'] }, // Bitfarms
+  { symbol: 'WULF', sectors: ['Bitcoin'] }, // TeraWulf
+  { symbol: 'CORZ', sectors: ['Bitcoin'] }, // Core Scientific
   
   // 电动车概念股
   { symbol: 'TSLA', sectors: ['EV', 'Tech'] },
@@ -82,6 +96,8 @@ export const STOCK_POOL: StockInfo[] = [
   { symbol: 'QUBT', sectors: ['Quantum', 'Tech'] },
   { symbol: 'QBTS', sectors: ['Quantum', 'Tech'] },
   { symbol: 'QMCO', sectors: ['Quantum', 'Tech'] },
+  { symbol: 'ARQQ', sectors: ['Quantum', 'Tech'] }, // Arqit Quantum
+  { symbol: 'QTUM', sectors: ['Quantum', 'Tech'] }, // Defiance Quantum ETF
   
   // 金融科技
   { symbol: 'SOFI', sectors: ['Fintech'] },
@@ -97,6 +113,10 @@ export const STOCK_POOL: StockInfo[] = [
   { symbol: 'NET', sectors: ['Cloud', 'Tech'] },
   { symbol: 'ZS', sectors: ['Cloud', 'Tech'] },
   { symbol: 'CRWD', sectors: ['Cloud', 'Tech'] },
+  { symbol: 'TEAM', sectors: ['Cloud', 'Tech'] }, // Atlassian
+  { symbol: 'WDAY', sectors: ['Cloud', 'Tech'] }, // Workday
+  { symbol: 'VEEV', sectors: ['Cloud', 'Tech'] }, // Veeva Systems
+  { symbol: 'OKTA', sectors: ['Cloud', 'Tech'] }, // Okta
   
   // 能源股
   { symbol: 'XOM', sectors: ['Energy'] },
@@ -105,7 +125,10 @@ export const STOCK_POOL: StockInfo[] = [
   { symbol: 'DVN', sectors: ['Energy'] },
   { symbol: 'PBR', sectors: ['Energy'] },
   { symbol: 'USO', sectors: ['Energy', 'ETF'] },
-  { symbol: 'SMR', sectors: ['Energy'] }, // 核能
+  { symbol: 'FSLR', sectors: ['Energy'] },
+  { symbol: 'ENPH', sectors: ['Energy'] }, // Enphase Energy
+  { symbol: 'RUN', sectors: ['Energy'] }, // Sunrun
+  { symbol: 'NEE', sectors: ['Energy'] }, // NextEra Energy
   { symbol: 'OKLO', sectors: ['Energy'] }, // 核能
   { symbol: 'VST', sectors: ['Energy'] },
   { symbol: 'AES', sectors: ['Energy'] },
@@ -211,6 +234,8 @@ export const STOCK_POOL: StockInfo[] = [
   { symbol: 'DGNX', sectors: ['Other'] },
   { symbol: 'SNDK', sectors: ['Storage', 'Tech'] },
   { symbol: 'WDC', sectors: ['Storage', 'Tech'] },
+  { symbol: 'PSTG', sectors: ['Storage', 'Tech'] }, // Pure Storage
+  { symbol: 'NTAP', sectors: ['Storage', 'Cloud', 'Tech'] }, // NetApp
   { symbol: 'QS', sectors: ['EV'] },
   { symbol: 'NNE', sectors: ['Other'] },
   { symbol: 'SERV', sectors: ['Other'] },
@@ -268,6 +293,8 @@ export const STOCK_POOL: StockInfo[] = [
   { symbol: 'TMC', sectors: ['Other'] },
   { symbol: 'B', sectors: ['Other'] },
   { symbol: 'NEM', sectors: ['RareEarth'] }, // 稀土/黄金
+  { symbol: 'REMX', sectors: ['RareEarth', 'ETF'] }, // VanEck Rare Earth/Strategic Metals ETF
+  { symbol: 'LIT', sectors: ['RareEarth', 'ETF'] }, // Global X Lithium & Battery Tech ETF
   { symbol: 'BRK.B', sectors: ['Other'] },
   { symbol: 'PM', sectors: ['Other'] },
   { symbol: 'KHC', sectors: ['Other'] },
