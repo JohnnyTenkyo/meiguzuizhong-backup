@@ -180,7 +180,7 @@ export default function Home() {
                 ? 'text-red-500 bg-red-500/10' 
                 : 'text-green-500 bg-green-500/10'
             }`}>
-              {q.changePercent >= 0 ? '+' : ''}{q.changePercent.toFixed(2)}%
+              {(q.changePercent ?? 0) >= 0 ? '+' : ''}{(q.changePercent ?? 0).toFixed(2)}%
             </span>
           </div>
         ) : (
@@ -336,7 +336,7 @@ export default function Home() {
                   <div className="flex flex-col gap-1">
                     <span className="data-mono text-sm font-medium">${stock.price.toFixed(2)}</span>
                     <span className="data-mono text-xs px-2 py-1 rounded font-medium text-red-500 bg-red-500/10 text-center">
-                      +{stock.changePercent.toFixed(2)}%
+                      +{(stock.changePercent ?? 0).toFixed(2)}%
                     </span>
                   </div>
                 </div>
@@ -430,11 +430,11 @@ export default function Home() {
                     <div className="flex flex-col gap-1 mt-auto">
                       <span className="data-mono text-sm font-medium">${stock.price.toFixed(2)}</span>
                       <span className={`data-mono text-xs px-2 py-1 rounded font-medium text-center ${
-                        stock.changePercent >= 0 
+                        (stock.changePercent ?? 0) >= 0 
                           ? 'text-red-500 bg-red-500/10' 
                           : 'text-green-500 bg-green-500/10'
                       }`}>
-                        {stock.changePercent >= 0 ? '+' : ''}{stock.changePercent.toFixed(2)}%
+                        {(stock.changePercent ?? 0) >= 0 ? '+' : ''}{(stock.changePercent ?? 0).toFixed(2)}%
                       </span>
                     </div>
                   </div>
@@ -488,11 +488,11 @@ export default function Home() {
                         <div className="flex flex-col items-end gap-1">
                           <span className="data-mono text-xs">${stock.price.toFixed(2)}</span>
                           <span className={`data-mono text-xs px-1.5 py-0.5 rounded ${
-                            stock.changePercent >= 0
+                            (stock.changePercent ?? 0) >= 0
                               ? 'text-red-500 bg-red-500/10'
                               : 'text-green-500 bg-green-500/10'
                           }`}>
-                            {stock.changePercent >= 0 ? '+' : ''}{stock.changePercent.toFixed(2)}%
+                            {(stock.changePercent ?? 0) >= 0 ? '+' : ''}{(stock.changePercent ?? 0).toFixed(2)}%
                           </span>
                         </div>
                       </div>

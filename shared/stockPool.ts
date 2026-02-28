@@ -322,7 +322,6 @@ export const STOCK_POOL: StockInfo[] = [
   { symbol: 'CELH', sectors: ['Other'] },
   { symbol: 'VRSN', sectors: ['Tech'] },
   { symbol: 'SIRI', sectors: ['Other'] },
-  { symbol: 'NUKK', sectors: ['Other'] },
   { symbol: 'AVDL', sectors: ['Other'] },
   { symbol: 'KC', sectors: ['Other'] },
 

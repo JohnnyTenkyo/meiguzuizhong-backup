@@ -130,11 +130,11 @@ export default function SectorDetail() {
                     {stock.changePercent !== null && stock.changePercent !== undefined && (
                       <div
                         className={`text-sm font-medium ${
-                          stock.changePercent >= 0 ? "text-red-500" : "text-green-500"
+                          (stock.changePercent ?? 0) >= 0 ? "text-red-500" : "text-green-500"
                         }`}
                       >
-                        {stock.changePercent >= 0 ? "+" : ""}
-                        {stock.changePercent.toFixed(2)}%
+                        {(stock.changePercent ?? 0) >= 0 ? "+" : ""}
+                        {(stock.changePercent ?? 0).toFixed(2)}%
                       </div>
                     )}
                   </>
