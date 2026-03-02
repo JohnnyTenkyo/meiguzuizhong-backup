@@ -5,6 +5,7 @@ import { publicProcedure, router } from "./_core/trpc";
 import { fociRouter } from "./fociRouter";
 import { newsflowRouter } from "./newsflowRouter";
 import { stockRouter } from "./stockRouter";
+import { watchlistRouter } from "./watchlistRouter";
 
 export const appRouter = router({
   system: systemRouter,
@@ -21,6 +22,7 @@ export const appRouter = router({
   stock: stockRouter,
   foci: fociRouter,
   newsflow: newsflowRouter,
+  watchlist: watchlistRouter,
 });
 
 export type AppRouter = typeof appRouter;

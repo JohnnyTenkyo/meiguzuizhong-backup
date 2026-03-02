@@ -189,3 +189,16 @@
 - [x] 从股票池中踢出无效股票(NUKK)
 - [x] 测试修复(首页正常显示,无错误)
 - [ ] 创建新的 checkpoint
+
+## 自选股账号绑定功能
+- [x] 诊断当前自选股存储方式(浏览器 localStorage)
+- [x] 检查数据库中是否已有 watchlist 表
+- [x] 设计新的 watchlist 表结构(userId, symbol, addedAt)
+- [x] 实现后端 API: 获取自选股列表
+- [x] 实现后端 API: 添加自选股
+- [x] 实现后端 API: 删除自选股
+- [x] 实现后端 API: 清空自选股
+- [x] 更新前端代码使用数据库 API 替代 localStorage
+- [x] 实现数据迁移逻辑(首次登录时迁移本地数据)
+- [x] 测试自选股功能(添加、删除、跨设备同步)
+- [ ] 创建新的 checkpoint
