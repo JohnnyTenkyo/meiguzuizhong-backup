@@ -145,10 +145,12 @@ export type InsertSocialMediaCache = typeof socialMediaCache.$inferInsert;
  */
 export const watchlist = mysqlTable("watchlist", {
   id: int("id").autoincrement().primaryKey(),
-  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  localUserId: int("localUserId").notNull().references(() => localUsers.id, { onDelete: "cascade" }),
   symbol: varchar("symbol", { length: 20 }).notNull(),
   addedAt: timestamp("addedAt").defaultNow().notNull(),
 });
 
 export type Watchlist = typeof watchlist.$inferSelect;
 export type InsertWatchlist = typeof watchlist.$inferInsert;
+
+// Indexes for faster lookups (defined inline in table)

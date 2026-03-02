@@ -1,44 +1,38 @@
 import { z } from "zod";
-import { protectedProcedure, router } from "./_core/trpc";
+import { publicProcedure, router } from "./_core/trpc";
 import { getDb } from "./db";
 import { watchlist, InsertWatchlist } from "../drizzle/schema";
 import { eq, and } from "drizzle-orm";
 
 export const watchlistRouter = router({
   // 获取用户的自选股列表
-  getWatchlist: protectedProcedure.query(async ({ ctx }) => {
-    if (!ctx.user) {
-      throw new Error("User not authenticated");
-    }
-
-    const db = await getDb();
-    if (!db) {
-      console.warn("[Watchlist] Database not available");
-      return [];
-    }
-
-    try {
-      const result = await db
-        .select({ symbol: watchlist.symbol, addedAt: watchlist.addedAt })
-        .from(watchlist)
-        .where(eq(watchlist.userId, ctx.user.id))
-        .orderBy(watchlist.addedAt);
-
-      return result.map(r => r.symbol);
-    } catch (error) {
-      console.error("[Watchlist] Failed to get watchlist:", error);
-      return [];
-    }
-  }),
-
-  // 添加股票到自选
-  addToWatchlist: protectedProcedure
-    .input(z.object({ symbol: z.string() }))
-    .mutation(async ({ ctx, input }) => {
-      if (!ctx.user) {
-        throw new Error("User not authenticated");
+  getWatchlist: publicProcedure
+    .input(z.object({ localUserId: z.number() }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) {
+        console.warn("[Watchlist] Database not available");
+        return [];
       }
 
+      try {
+        const result = await db
+          .select({ symbol: watchlist.symbol, addedAt: watchlist.addedAt })
+          .from(watchlist)
+          .where(eq(watchlist.localUserId, input.localUserId))
+          .orderBy(watchlist.addedAt);
+
+        return result.map(r => r.symbol);
+      } catch (error) {
+        console.error("[Watchlist] Failed to get watchlist:", error);
+        return [];
+      }
+    }),
+
+  // 添加股票到自选
+  addToWatchlist: publicProcedure
+    .input(z.object({ localUserId: z.number(), symbol: z.string() }))
+    .mutation(async ({ input }) => {
       const db = await getDb();
       if (!db) {
         throw new Error("Database not available");
@@ -51,7 +45,7 @@ export const watchlistRouter = router({
           .from(watchlist)
           .where(
             and(
-              eq(watchlist.userId, ctx.user.id),
+              eq(watchlist.localUserId, input.localUserId),
               eq(watchlist.symbol, input.symbol)
             )
           )
@@ -63,7 +57,7 @@ export const watchlistRouter = router({
 
         // 添加到自选
         await db.insert(watchlist).values({
-          userId: ctx.user.id,
+          localUserId: input.localUserId,
           symbol: input.symbol,
         } as InsertWatchlist);
 
@@ -75,13 +69,9 @@ export const watchlistRouter = router({
     }),
 
   // 从自选中删除股票
-  removeFromWatchlist: protectedProcedure
-    .input(z.object({ symbol: z.string() }))
-    .mutation(async ({ ctx, input }) => {
-      if (!ctx.user) {
-        throw new Error("User not authenticated");
-      }
-
+  removeFromWatchlist: publicProcedure
+    .input(z.object({ localUserId: z.number(), symbol: z.string() }))
+    .mutation(async ({ input }) => {
       const db = await getDb();
       if (!db) {
         throw new Error("Database not available");
@@ -92,7 +82,7 @@ export const watchlistRouter = router({
           .delete(watchlist)
           .where(
             and(
-              eq(watchlist.userId, ctx.user.id),
+              eq(watchlist.localUserId, input.localUserId),
               eq(watchlist.symbol, input.symbol)
             )
           );
@@ -105,13 +95,9 @@ export const watchlistRouter = router({
     }),
 
   // 切换股票的自选状态
-  toggleWatchlist: protectedProcedure
-    .input(z.object({ symbol: z.string() }))
-    .mutation(async ({ ctx, input }) => {
-      if (!ctx.user) {
-        throw new Error("User not authenticated");
-      }
-
+  toggleWatchlist: publicProcedure
+    .input(z.object({ localUserId: z.number(), symbol: z.string() }))
+    .mutation(async ({ input }) => {
       const db = await getDb();
       if (!db) {
         throw new Error("Database not available");
@@ -124,7 +110,7 @@ export const watchlistRouter = router({
           .from(watchlist)
           .where(
             and(
-              eq(watchlist.userId, ctx.user.id),
+              eq(watchlist.localUserId, input.localUserId),
               eq(watchlist.symbol, input.symbol)
             )
           )
@@ -136,7 +122,7 @@ export const watchlistRouter = router({
             .delete(watchlist)
             .where(
               and(
-                eq(watchlist.userId, ctx.user.id),
+                eq(watchlist.localUserId, input.localUserId),
                 eq(watchlist.symbol, input.symbol)
               )
             );
@@ -144,7 +130,7 @@ export const watchlistRouter = router({
         } else {
           // 添加
           await db.insert(watchlist).values({
-            userId: ctx.user.id,
+            localUserId: input.localUserId,
             symbol: input.symbol,
           } as InsertWatchlist);
           return { success: true, added: true };
@@ -156,34 +142,28 @@ export const watchlistRouter = router({
     }),
 
   // 清空自选股
-  clearWatchlist: protectedProcedure.mutation(async ({ ctx }) => {
-    if (!ctx.user) {
-      throw new Error("User not authenticated");
-    }
-
-    const db = await getDb();
-    if (!db) {
-      throw new Error("Database not available");
-    }
-
-    try {
-      await db.delete(watchlist).where(eq(watchlist.userId, ctx.user.id));
-
-      return { success: true, message: "Watchlist cleared" };
-    } catch (error) {
-      console.error("[Watchlist] Failed to clear watchlist:", error);
-      throw error;
-    }
-  }),
-
-  // 批量添加自选股(用于迁移本地数据)
-  addMultipleToWatchlist: protectedProcedure
-    .input(z.object({ symbols: z.array(z.string()) }))
-    .mutation(async ({ ctx, input }) => {
-      if (!ctx.user) {
-        throw new Error("User not authenticated");
+  clearWatchlist: publicProcedure
+    .input(z.object({ localUserId: z.number() }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) {
+        throw new Error("Database not available");
       }
 
+      try {
+        await db.delete(watchlist).where(eq(watchlist.localUserId, input.localUserId));
+
+        return { success: true, message: "Watchlist cleared" };
+      } catch (error) {
+        console.error("[Watchlist] Failed to clear watchlist:", error);
+        throw error;
+      }
+    }),
+
+  // 批量添加自选股(用于迁移本地数据)
+  addMultipleToWatchlist: publicProcedure
+    .input(z.object({ localUserId: z.number(), symbols: z.array(z.string()) }))
+    .mutation(async ({ input }) => {
       const db = await getDb();
       if (!db) {
         throw new Error("Database not available");
@@ -194,7 +174,7 @@ export const watchlistRouter = router({
         const existing = await db
           .select({ symbol: watchlist.symbol })
           .from(watchlist)
-          .where(eq(watchlist.userId, ctx.user.id));
+          .where(eq(watchlist.localUserId, input.localUserId));
 
         const existingSymbols = new Set(existing.map(e => e.symbol));
 
@@ -208,7 +188,7 @@ export const watchlistRouter = router({
         // 批量插入
         await db.insert(watchlist).values(
           toAdd.map(symbol => ({
-            userId: ctx.user.id,
+            localUserId: input.localUserId,
             symbol,
           } as InsertWatchlist))
         );

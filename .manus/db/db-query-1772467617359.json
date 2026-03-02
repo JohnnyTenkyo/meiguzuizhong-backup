@@ -1,0 +1,9 @@
+{
+  "query": "ALTER TABLE `watchlist` DROP FOREIGN KEY `watchlist_userId_users_id_fk`;\nALTER TABLE `watchlist` CHANGE COLUMN `userId` `localUserId` INT NOT NULL;\nALTER TABLE `watchlist` ADD CONSTRAINT `watchlist_localUserId_local_users_id_fk` FOREIGN KEY (`localUserId`) REFERENCES `local_users`(`id`) ON DELETE CASCADE;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3F1mdpdPbuX7mLb.root --database LubELmCgAU6LZpkFdbYpqS --execute ALTER TABLE `watchlist` DROP FOREIGN KEY `watchlist_userId_users_id_fk`;\nALTER TABLE `watchlist` CHANGE COLUMN `userId` `localUserId` INT NOT NULL;\nALTER TABLE `watchlist` ADD CONSTRAINT `watchlist_localUserId_local_users_id_fk` FOREIGN KEY (`localUserId`) REFERENCES `local_users`(`id`) ON DELETE CASCADE;",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 2425
+}

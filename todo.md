@@ -202,3 +202,16 @@
 - [x] 实现数据迁移逻辑(首次登录时迁移本地数据)
 - [x] 测试自选股功能(添加、删除、跨设备同步)
 - [ ] 创建新的 checkpoint
+
+## 删除 Manus OAuth 登录系统
+- [x] 删除 Manus OAuth 相关代码
+- [x] 删除 protectedProcedure 中的 OAuth 检查
+- [x] 更新 watchlist API 使用 localUsers 而非 Manus users
+- [x] 测试登录系统正常工作
+
+## 优化自选股加载性能
+- [x] 分析自选股加载的瓶颈
+- [x] 实现 watchlist 缓存機制
+- [x] 批量加载股票数据而非逐个加载
+- [x] 前端使用 React.memo 优化渲染
+- [x] 测试加载速度改进

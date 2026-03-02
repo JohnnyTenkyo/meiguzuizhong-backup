@@ -72,21 +72,26 @@ export default function Home() {
     loadMarketOverview();
   }, []);
 
-  // Load watchlist quotes
+  // Load watchlist quotes (batch loading for better performance)
   useEffect(() => {
     const loadWatchlistQuotes = async () => {
-      for (const symbol of watchlist) {
-        if (quotes[symbol]) continue;
-        setLoadingQuotes(prev => new Set(prev).add(symbol));
-        try {
-          const q = await fetchStockQuote(symbol);
-          setQuotes(prev => ({ ...prev, [symbol]: q }));
-        } catch {
-          // Skip failed quotes
-        }
+      const symbolsToLoad = watchlist.filter(s => !quotes[s]);
+      if (symbolsToLoad.length === 0) return;
+      setLoadingQuotes(prev => new Set([...Array.from(prev), ...symbolsToLoad]));
+      const batchSize = 5;
+      for (let i = 0; i < symbolsToLoad.length; i += batchSize) {
+        const batch = symbolsToLoad.slice(i, i + batchSize);
+        const results = await Promise.allSettled(batch.map(symbol => fetchStockQuote(symbol)));
+        const newQuotes: Record<string, any> = {};
+        results.forEach((result, idx) => {
+          if (result.status === 'fulfilled') {
+            newQuotes[batch[idx]] = result.value;
+          }
+        });
+        setQuotes(prev => ({ ...prev, ...newQuotes }));
         setLoadingQuotes(prev => {
           const next = new Set(prev);
-          next.delete(symbol);
+          batch.forEach(s => next.delete(s));
           return next;
         });
       }
