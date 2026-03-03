@@ -107,7 +107,11 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
   }, [localUserId, watchlistLoading, migrated]);
 
   const addToWatchlist = (symbol: string) => {
-    if (!localUserId) return;
+    console.log('[Watchlist] addToWatchlist called:', { symbol, localUserId });
+    if (!localUserId) {
+      console.warn('[Watchlist] No localUserId, cannot add to watchlist');
+      return;
+    }
     if (!watchlist.includes(symbol)) {
       setWatchlist(prev => [...prev, symbol]);
       addMutation.mutate({ localUserId, symbol });
@@ -115,7 +119,11 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
   };
 
   const removeFromWatchlist = (symbol: string) => {
-    if (!localUserId) return;
+    console.log('[Watchlist] removeFromWatchlist called:', { symbol, localUserId });
+    if (!localUserId) {
+      console.warn('[Watchlist] No localUserId, cannot remove from watchlist');
+      return;
+    }
     setWatchlist(prev => prev.filter(s => s !== symbol));
     removeMutation.mutate({ localUserId, symbol });
   };
@@ -125,6 +133,7 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
   };
 
   const toggleStock = (symbol: string) => {
+    console.log('[Watchlist] toggleStock called:', { symbol, localUserId, isInWatchlist: isInWatchlist(symbol) });
     if (isInWatchlist(symbol)) {
       removeFromWatchlist(symbol);
     } else {
