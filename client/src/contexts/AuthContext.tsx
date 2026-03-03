@@ -49,6 +49,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(newUser);
         localStorage.setItem('user', JSON.stringify(newUser));
         localStorage.setItem('auth_token', data.token);
+        localStorage.setItem('localUserId', String(data.user.id));
         return { success: true };
       }
       return { success: false, error: data.error || '注册失败' };
@@ -70,6 +71,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(newUser);
         localStorage.setItem('user', JSON.stringify(newUser));
         localStorage.setItem('auth_token', data.token);
+        localStorage.setItem('localUserId', String(data.user.id));
         return { success: true };
       }
       return { success: false, error: data.error || '登录失败' };
@@ -103,6 +105,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(null);
     localStorage.removeItem('user');
     localStorage.removeItem('auth_token');
+    localStorage.removeItem('localUserId');
   };
 
   const value: AuthContextType = {
