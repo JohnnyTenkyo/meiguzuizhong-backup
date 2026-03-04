@@ -185,7 +185,7 @@ export default function Home() {
                 ? 'text-red-500 bg-red-500/10' 
                 : 'text-green-500 bg-green-500/10'
             }`}>
-              {(q.changePercent ?? 0) >= 0 ? '+' : ''}{(q.changePercent ?? 0).toFixed(2)}%
+              {(typeof q.changePercent === 'number' ? q.changePercent : 0) >= 0 ? '+' : ''}{(typeof q.changePercent === 'number' ? q.changePercent : 0).toFixed(2)}%
             </span>
           </div>
         ) : (

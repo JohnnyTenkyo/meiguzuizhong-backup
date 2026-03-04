@@ -232,3 +232,17 @@
 - [x] 恢复收藏动画效果
 - [x] 测试收藏功能
 - [x] 创建新的 checkpoint
+
+## 修复 MarketCard 组件 null 值错误
+- [ ] 找到 MarketCard 组件
+- [ ] 诊断 changePercent 为 null 的原因
+- [ ] 修复 null 值处理
+- [ ] 测试修复
+- [ ] 创建新的 checkpoint
+
+## 修复 MarketCard 组件 null 值错误 - 完成
+- [x] 找到 MarketCard 组件
+- [x] 诊断 changePercent 为 null 的原因
+- [x] 修复 null 值处理(使用 Number() 转换)
+- [x] 测试修复
+- [x] 创建新的 checkpoint
