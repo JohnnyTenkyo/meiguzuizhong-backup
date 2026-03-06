@@ -290,6 +290,23 @@ export default function Home() {
           <span className="text-xs text-amber-500">开始回测 →</span>
         </div>
 
+        {/* Quantitative Backtest Platform entry */}
+        <a
+          href="https://mglh.manus.space"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="rounded-lg border border-purple-500/30 bg-purple-500/5 px-4 py-3 flex items-center justify-between cursor-pointer hover:bg-purple-500/10 transition-colors"
+        >
+          <div className="flex items-center gap-2">
+            <BarChart3 size={18} className="text-purple-500" />
+            <div>
+              <div className="text-sm font-medium">量化回测平台</div>
+              <div className="text-xs text-muted-foreground">策略开发 · 数据分析 · 量化交易 · 性能评估</div>
+            </div>
+          </div>
+          <span className="text-xs text-purple-500">进入平台 →</span>
+        </a>
+
         {/* Market Overview - Three major indices + BTC + Gold */}
         <section>
           <h2 className="text-sm font-medium text-muted-foreground mb-3 flex items-center gap-1.5">
