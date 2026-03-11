@@ -253,3 +253,18 @@
 - [x] 创建入口组件，点击跳转到 mglh.manus.space
 - [x] 测试入口功能
 - [x] 创建新的 checkpoint
+
+## 优化推荐算法可视化
+- [x] 在推荐股票卡片上显示推荐理由
+- [x] 支持显示多个推荐信号（蓝梅穿黄梅、底分型加底背离等）
+- [x] 优化卡片布局以容纳推荐理由信息
+- [x] 添加推荐理由的图标或标签
+
+## 补充 K 线数据源
+- [x] 集成 Yahoo Finance API
+- [x] 集成 Stooq API
+- [x] 集成 Tiingo API (KEY: 3e93c463ad29b481ca941fd9a3b2071f5c51d0d1)
+- [x] 集成 Alpaca API (KEY: PKXEV52QLZ2GJIBEZ7DFH2NIXL, Secret: ENBeHx9VidGaWo7x5Q3eQxSGEyAX3R1T7SQNAWNA7uDS)
+- [x] 优化 K 线小级别显示
+- [x] 测试多数据源的 K 线加载
+- [x] 创建新的 checkpoint

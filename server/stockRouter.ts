@@ -749,4 +749,50 @@ export const stockRouter = router({
         return [];
       }
     }),
+
+  // Get K-line data from multiple sources
+  getKlines: publicProcedure
+    .input(z.object({ symbol: z.string(), interval: z.string().optional() }))
+    .query(async ({ input }) => {
+      const { symbol, interval = '1d' } = input;
+      const cacheKey = `klines:${symbol}:${interval}`;
+      const cached = getCached<any>(cacheKey);
+      if (cached) return cached;
+
+      try {
+        const { fetchKlineData } = await import('./multiSourceKlines');
+        const result = await fetchKlineData(symbol, interval);
+        
+        if (result) {
+          setCache(cacheKey, result, 300000); // 5 minutes
+          return result;
+        }
+        return null;
+      } catch (error: any) {
+        console.error(`Failed to fetch K-lines for ${symbol}:`, error.message);
+        return null;
+      }
+    }),
+
+  // Get multiple timeframes K-line data
+  getMultipleTimeframes: publicProcedure
+    .input(z.object({ symbol: z.string() }))
+    .query(async ({ input }) => {
+      const { symbol } = input;
+      const cacheKey = `timeframes:${symbol}`;
+      const cached = getCached<any>(cacheKey);
+      if (cached) return cached;
+
+      try {
+        const { fetchMultipleTimeframes } = await import('./multiSourceKlines');
+        const timeframes = ['1d', '4h', '1h', '30m', '15m', '5m'];
+        const result = await fetchMultipleTimeframes(symbol, timeframes);
+        
+        setCache(cacheKey, result, 600000); // 10 minutes
+        return result;
+      } catch (error: any) {
+        console.error(`Failed to fetch multiple timeframes for ${symbol}:`, error.message);
+        return {};
+      }
+    }),
 });

@@ -26,4 +26,22 @@ describe("API Keys Configuration", () => {
     expect(ENV.alphamoeFociApiKey).toBeTruthy();
     expect(ENV.alphamoeFociApiKey.length).toBeGreaterThan(0);
   });
+
+  it("should have TIINGO_API_KEY configured", () => {
+    const tiingoKey = process.env.TIINGO_API_KEY;
+    expect(tiingoKey).toBeTruthy();
+    expect(tiingoKey?.length).toBeGreaterThan(0);
+  });
+
+  it("should have ALPACA_API_KEY configured", () => {
+    const alpacaKey = process.env.ALPACA_API_KEY;
+    expect(alpacaKey).toBeTruthy();
+    expect(alpacaKey?.length).toBeGreaterThan(0);
+  });
+
+  it("should have ALPACA_SECRET_KEY configured", () => {
+    const alpacaSecret = process.env.ALPACA_SECRET_KEY;
+    expect(alpacaSecret).toBeTruthy();
+    expect(alpacaSecret?.length).toBeGreaterThan(0);
+  });
 });

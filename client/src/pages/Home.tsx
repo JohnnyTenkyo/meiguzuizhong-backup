@@ -412,7 +412,15 @@ export default function Home() {
                     <span className="font-bold text-base tracking-wide">{stock.symbol}</span>
                     
                     {/* 推荐理由 */}
-                    <p className="text-xs text-muted-foreground line-clamp-2">{stock.reason}</p>
+                    {stock.reason && (
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {stock.reason.split('、').map((reason: string, idx: number) => (
+                          <span key={idx} className="inline-block text-xs px-2 py-0.5 rounded-full bg-primary/20 text-primary font-medium">
+                            {reason}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                     
                     {/* 评分详情 */}
                     {stock.totalScore !== undefined && (
