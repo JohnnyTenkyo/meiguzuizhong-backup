@@ -424,7 +424,7 @@ export default function Home() {
                     
                     {/* 评分详情 */}
                     {stock.totalScore !== undefined && (
-                      <div className="flex flex-col gap-1.5 mt-2 p-2 rounded bg-background/50 border border-border/50">
+                      <div className="flex flex-col gap-2 mt-2 p-2 rounded bg-background/50 border border-border/50">
                         <div className="flex items-center justify-between">
                           <span className="text-xs text-muted-foreground">总评分</span>
                           <span className={`text-sm font-bold ${
@@ -435,23 +435,40 @@ export default function Home() {
                             {stock.totalScore.toFixed(1)}
                           </span>
                         </div>
-                        <div className="grid grid-cols-2 gap-1">
-                          <div className="flex items-center justify-between text-xs">
-                            <span className="text-muted-foreground">梯子</span>
-                            <span className="font-medium">{(stock.priority1Score || 0).toFixed(0)}</span>
-                          </div>
-                          <div className="flex items-center justify-between text-xs">
-                            <span className="text-muted-foreground">禅动</span>
-                            <span className="font-medium">{(stock.priority2Score || 0).toFixed(0)}</span>
-                          </div>
-                          <div className="flex items-center justify-between text-xs">
-                            <span className="text-muted-foreground">缠论</span>
-                            <span className="font-medium">{(stock.priority3Score || 0).toFixed(0)}</span>
-                          </div>
-                          <div className="flex items-center justify-between text-xs">
-                            <span className="text-muted-foreground">动能</span>
-                            <span className="font-medium">{(stock.priority4Score || 0).toFixed(0)}</span>
-                          </div>
+                        <div className="space-y-1.5">
+                          {[
+                            { label: '一级', score: stock.priority1Score, desc: '30分钟蓝梅穿黄梅' },
+                            { label: '二级', score: stock.priority2Score, desc: '禅动指标买入' },
+                            { label: '三级', score: stock.priority3Score, desc: '底分型+底背离' },
+                            { label: '四级', score: stock.priority4Score, desc: '买卖动能转强' }
+                          ].map((item, idx) => {
+                            const isActive = (item.score || 0) > 70;
+                            return (
+                              <div key={idx} className="flex flex-col gap-1">
+                                <div className="flex items-center justify-between">
+                                  <span className={`text-xs font-medium ${
+                                    isActive ? 'text-primary' : 'text-muted-foreground'
+                                  }`}>
+                                    {item.label}优先级
+                                  </span>
+                                  <span className={`text-xs font-bold ${
+                                    isActive ? 'text-primary' : 'text-muted-foreground'
+                                  }`}>
+                                    {(item.score || 0).toFixed(0)}
+                                  </span>
+                                </div>
+                                <div className="w-full h-1.5 rounded-full bg-muted overflow-hidden">
+                                  <div 
+                                    className={`h-full rounded-full transition-all ${
+                                      isActive ? 'bg-primary' : 'bg-muted-foreground/30'
+                                    }`}
+                                    style={{ width: `${Math.min((item.score || 0) / 100 * 100, 100)}%` }}
+                                  />
+                                </div>
+                                <span className="text-xs text-muted-foreground">{item.desc}</span>
+                              </div>
+                            );
+                          })}
                         </div>
                       </div>
                     )}

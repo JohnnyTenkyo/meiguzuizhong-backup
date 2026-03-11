@@ -411,19 +411,27 @@ async function fetchCandles(symbol: string, interval: string, range: string): Pr
 
 // ============ 综合评分系统 ============
 
-export interface RecommendationScore {
+export interface ScoreDetail {
+  name: string;
+  score: number;
+  reason: string;
+  description: string;
+}
+
+export interface RecommendationResult {
   symbol: string;
   totalScore: number;
-  priority1Score: number; // 梯子穿越
-  priority2Score: number; // 禅动指标
-  priority3Score: number; // 缠论分型
-  priority4Score: number; // 买卖动能
+  priority1Score: number;
+  priority2Score: number;
+  priority3Score: number;
+  priority4Score: number;
+  scoreDetails: ScoreDetail[];
   price: number;
   changePercent: number;
   reason: string;
 }
 
-export async function calculateRecommendationScore(symbol: string): Promise<RecommendationScore | null> {
+export async function calculateRecommendationScore(symbol: string): Promise<RecommendationResult | null> {
   try {
     // 获取多时间级别K线数据(Yahoo Finance 不支持2h/3h/4h,用1h和1d代替)
     const [candles30m, candles1h, candlesDaily] = await Promise.all([
@@ -472,12 +480,41 @@ export async function calculateRecommendationScore(symbol: string): Promise<Reco
     const firstCandle = priceCandles[0];
     const changePercent = ((lastCandle.close - firstCandle.open) / firstCandle.open) * 100;
     
-    // 生成推荐理由
+    // 生成推荐理由和上流信息
     const reasons: string[] = [];
-    if (priority1Score > 70) reasons.push('梯子穿越信号强');
-    if (priority2Score > 70) reasons.push('禅动指标买入');
-    if (priority3Score > 70) reasons.push('底分型+底背离');
-    if (priority4Score > 70) reasons.push('买卖动能转强');
+    const scoreDetails = [
+      {
+        name: '一级优先级',
+        score: priority1Score,
+        reason: '梯子穿越信号强',
+        description: '30分鐘蓝梅穿黄梅且起涨信号'
+      },
+      {
+        name: '二级优先级',
+        score: priority2Score,
+        reason: '禅动指标买入',
+        description: '日级/4小时级买入信号'
+      },
+      {
+        name: '三级优先级',
+        score: priority3Score,
+        reason: '底分型+底背离',
+        description: '日级/4小时级买入信号'
+      },
+      {
+        name: '四级优先级',
+        score: priority4Score,
+        reason: '买卖动能转强',
+        description: '黄线穿绿线且绿柱转红'
+      }
+    ];
+
+    // 根据优先级得分生成理由
+    scoreDetails.forEach(detail => {
+      if (detail.score > 70) {
+        reasons.push(detail.reason);
+      }
+    });
     
     const reason = reasons.length > 0 ? reasons.join('、') : '技术指标综合评分';
     
@@ -488,6 +525,7 @@ export async function calculateRecommendationScore(symbol: string): Promise<Reco
       priority2Score,
       priority3Score,
       priority4Score,
+      scoreDetails,
       price: lastCandle.close,
       changePercent,
       reason,
