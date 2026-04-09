@@ -1,7 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { MessageCircle, X, Send, Loader2, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 
@@ -17,8 +16,11 @@ interface StockAgentConfig {
   model: string;
 }
 
-export default function StockAgent() {
-  const [isOpen, setIsOpen] = useState(false);
+interface StockAgentProps {
+  onClose?: () => void;
+}
+
+export default function StockAgent({ onClose }: StockAgentProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       role: 'assistant',
@@ -28,7 +30,6 @@ export default function StockAgent() {
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [showSettings, setShowSettings] = useState(false);
   const [config, setConfig] = useState<StockAgentConfig>(() => {
     const saved = localStorage.getItem('stockAgentConfig');
     return saved ? JSON.parse(saved) : {
@@ -37,12 +38,12 @@ export default function StockAgent() {
       model: 'gpt-5.4-nano',
     };
   });
-  const [tempConfig, setTempConfig] = useState(config);
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  // 自动滚动到最新消息
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
   }, [messages]);
 
@@ -121,26 +122,8 @@ export default function StockAgent() {
     }
   };
 
-  const handleSaveConfig = () => {
-    setConfig(tempConfig);
-    localStorage.setItem('stockAgentConfig', JSON.stringify(tempConfig));
-    setShowSettings(false);
-  };
-
-  if (!isOpen) {
-    return (
-      <button
-        onClick={() => setIsOpen(true)}
-        className="fixed bottom-6 right-6 w-14 h-14 rounded-full bg-gradient-to-r from-blue-500 to-cyan-500 text-white shadow-lg hover:shadow-xl transition-shadow flex items-center justify-center z-40"
-        title="Stock Agent"
-      >
-        <MessageCircle size={24} />
-      </button>
-    );
-  }
-
   return (
-    <div className="fixed bottom-6 right-6 w-96 h-[600px] bg-background border border-border rounded-lg shadow-2xl flex flex-col z-50">
+    <div className="w-96 h-[600px] bg-background border border-border rounded-lg shadow-2xl flex flex-col">
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b border-border bg-gradient-to-r from-blue-500/10 to-cyan-500/10">
         <div className="flex items-center gap-2">
@@ -161,14 +144,7 @@ export default function StockAgent() {
             <Settings size={18} />
           </a>
           <button
-            onClick={() => setShowSettings(!showSettings)}
-            className="p-1.5 hover:bg-secondary rounded-md transition-colors"
-            title="快速设置"
-          >
-            <Settings size={18} />
-          </button>
-          <button
-            onClick={() => setIsOpen(false)}
+            onClick={onClose}
             className="p-1.5 hover:bg-secondary rounded-md transition-colors"
           >
             <X size={18} />
@@ -176,93 +152,38 @@ export default function StockAgent() {
         </div>
       </div>
 
-      {/* Settings Panel */}
-      {showSettings && (
-        <div className="p-4 border-b border-border bg-secondary/30 space-y-3">
-          <div>
-            <label className="text-xs font-medium">Base URL</label>
-            <select
-              value={tempConfig.baseUrl}
-              onChange={(e) => setTempConfig({ ...tempConfig, baseUrl: e.target.value })}
-              className="w-full mt-1 px-2 py-1 text-sm border border-border rounded bg-background"
-            >
-              <option value="https://yunwu.ai">https://yunwu.ai</option>
-              <option value="https://yunwu.ai/v1">https://yunwu.ai/v1</option>
-              <option value="https://yunwu.ai/v1/chat/completions">https://yunwu.ai/v1/chat/completions</option>
-            </select>
-          </div>
-          <div>
-            <label className="text-xs font-medium">API Key</label>
-            <Input
-              type="password"
-              value={tempConfig.apiKey}
-              onChange={(e) => setTempConfig({ ...tempConfig, apiKey: e.target.value })}
-              className="mt-1 h-8 text-xs"
-              placeholder="输入 API Key"
-            />
-          </div>
-          <div>
-            <label className="text-xs font-medium">模型</label>
-            <Input
-              value={tempConfig.model}
-              onChange={(e) => setTempConfig({ ...tempConfig, model: e.target.value })}
-              className="mt-1 h-8 text-xs"
-              placeholder="输入模型名称"
-            />
-          </div>
-          <div className="flex gap-2">
-            <Button
-              onClick={handleSaveConfig}
-              size="sm"
-              className="flex-1 h-8 text-xs"
-            >
-              保存配置
-            </Button>
-            <Button
-              onClick={() => setShowSettings(false)}
-              variant="outline"
-              size="sm"
-              className="flex-1 h-8 text-xs"
-            >
-              取消
-            </Button>
-          </div>
-        </div>
-      )}
-
       {/* Messages */}
-      <ScrollArea className="flex-1 p-4" ref={scrollRef}>
-        <div className="space-y-3">
-          {messages.map((msg, idx) => (
+      <div className="flex-1 overflow-y-auto p-4 space-y-3">
+        {messages.map((msg, idx) => (
+          <div
+            key={idx}
+            className={cn(
+              'flex',
+              msg.role === 'user' ? 'justify-end' : 'justify-start'
+            )}
+          >
             <div
-              key={idx}
               className={cn(
-                'flex',
-                msg.role === 'user' ? 'justify-end' : 'justify-start'
+                'max-w-xs px-3 py-2 rounded-lg text-sm break-words',
+                msg.role === 'user'
+                  ? 'bg-primary text-primary-foreground'
+                  : 'bg-secondary text-secondary-foreground'
               )}
             >
-              <div
-                className={cn(
-                  'max-w-xs px-3 py-2 rounded-lg text-sm',
-                  msg.role === 'user'
-                    ? 'bg-primary text-primary-foreground'
-                    : 'bg-secondary text-secondary-foreground'
-                )}
-              >
-                {msg.content}
-              </div>
+              {msg.content}
             </div>
-          ))}
-          {isLoading && (
-            <div className="flex justify-start">
-              <div className="bg-secondary text-secondary-foreground px-3 py-2 rounded-lg flex items-center gap-2">
-                <Loader2 size={14} className="animate-spin" />
-                <span className="text-sm">思考中...</span>
-              </div>
+          </div>
+        ))}
+        {isLoading && (
+          <div className="flex justify-start">
+            <div className="bg-secondary text-secondary-foreground px-3 py-2 rounded-lg flex items-center gap-2">
+              <Loader2 size={14} className="animate-spin" />
+              <span className="text-sm">思考中...</span>
             </div>
-          )}
-        </div>
-      </ScrollArea>
+          </div>
+        )}
+        <div ref={messagesEndRef} />
+      </div>
 
       {/* Input */}
       <div className="p-3 border-t border-border flex gap-2">

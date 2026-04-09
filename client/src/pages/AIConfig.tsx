@@ -17,12 +17,6 @@ const DEFAULT_CONFIG: AIConfig = {
   model: 'gpt-5.4-nano',
 };
 
-const BASE_URL_OPTIONS = [
-  'https://yunwu.ai',
-  'https://yunwu.ai/v1',
-  'https://yunwu.ai/v1/chat/completions',
-];
-
 export default function AIConfig() {
   const [, setLocation] = useLocation();
   const [config, setConfig] = useState<AIConfig>(DEFAULT_CONFIG);
@@ -120,19 +114,14 @@ export default function AIConfig() {
             {/* Base URL */}
             <div className="space-y-2">
               <label className="text-sm font-medium">API Base URL</label>
-              <select
+              <Input
                 value={config.baseUrl}
                 onChange={(e) => setConfig({ ...config, baseUrl: e.target.value })}
-                className="w-full px-3 py-2 border border-border rounded-md bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-              >
-                {BASE_URL_OPTIONS.map((url) => (
-                  <option key={url} value={url}>
-                    {url}
-                  </option>
-                ))}
-              </select>
+                placeholder="例如: https://yunwu.ai/v1"
+                className="font-mono text-sm"
+              />
               <p className="text-xs text-muted-foreground">
-                选择 yunwu.ai API 的访问端点
+                yunwu.ai API 的访问端点
               </p>
             </div>
 

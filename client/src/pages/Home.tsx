@@ -4,8 +4,7 @@ import { Search, Star, TrendingUp, Zap, BarChart3, LogIn, LogOut, User, Clock } 
 import { Button } from '@/components/ui/button';
 import LoginDialog from '@/components/LoginDialog';
 import FociDashboard from '@/components/FociDashboard';
-import FociAssistant from '@/components/FociAssistant';
-import StockAgent from '@/components/StockAgent';
+import AIAssistantContainer from '@/components/AIAssistantContainer';
 import FociBloggerTracker from '@/components/FociBloggerTracker';
 import VIPNewsFlow from '@/components/VIPNewsFlow';
 import { useAuth } from '@/contexts/AuthContext';
@@ -582,8 +581,7 @@ export default function Home() {
       </main>
 
       <LoginDialog open={showLogin} onClose={() => setShowLogin(false)} />
-      <FociAssistant />
-      <StockAgent />
+      <AIAssistantContainer />
     </div>
   );
 }
