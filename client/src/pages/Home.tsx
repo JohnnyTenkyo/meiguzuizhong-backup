@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import LoginDialog from '@/components/LoginDialog';
 import FociDashboard from '@/components/FociDashboard';
 import FociAssistant from '@/components/FociAssistant';
+import StockAgent from '@/components/StockAgent';
 import FociBloggerTracker from '@/components/FociBloggerTracker';
 import VIPNewsFlow from '@/components/VIPNewsFlow';
 import { useAuth } from '@/contexts/AuthContext';
@@ -307,6 +308,23 @@ export default function Home() {
           <span className="text-xs text-purple-500">进入平台 →</span>
         </a>
 
+        {/* Automated Strategy Backtest Platform entry */}
+        <a
+          href="https://tzlh3.manus.space"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="rounded-lg border border-rose-500/30 bg-rose-500/5 px-4 py-3 flex items-center justify-between cursor-pointer hover:bg-rose-500/10 transition-colors"
+        >
+          <div className="flex items-center gap-2">
+            <Zap size={18} className="text-rose-500" />
+            <div>
+              <div className="text-sm font-medium">全自动策略回测</div>
+              <div className="text-xs text-muted-foreground">自动执行 · 实时监控 · 风险管理 · 性能优化</div>
+            </div>
+          </div>
+          <span className="text-xs text-rose-500">开始回测 →</span>
+        </a>
+
         {/* Market Overview - Three major indices + BTC + Gold */}
         <section>
           <h2 className="text-sm font-medium text-muted-foreground mb-3 flex items-center gap-1.5">
@@ -565,6 +583,7 @@ export default function Home() {
 
       <LoginDialog open={showLogin} onClose={() => setShowLogin(false)} />
       <FociAssistant />
+      <StockAgent />
     </div>
   );
 }
