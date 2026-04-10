@@ -47,6 +47,31 @@ export default function StockAgent({ onClose }: StockAgentProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // 监听 localStorage 配置变化
+  useEffect(() => {
+    const handleStorageChange = () => {
+      const saved = localStorage.getItem('stockAgentConfig');
+      if (saved) {
+        try {
+          setConfig(JSON.parse(saved));
+        } catch (error) {
+          console.error('Failed to parse config:', error);
+        }
+      }
+    };
+
+    // 监听 storage 事件（其他标签页或窗口修改）
+    window.addEventListener('storage', handleStorageChange);
+    
+    // 监听自定义事件（同一标签页内修改）
+    window.addEventListener('configUpdated', handleStorageChange);
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('configUpdated', handleStorageChange);
+    };
+  }, []);
+
   // 自动滚动到最新消息
   useEffect(() => {
     if (messagesEndRef.current) {
@@ -81,6 +106,10 @@ export default function StockAgent({ onClose }: StockAgentProps) {
 
   const callStockAgent = async (userMessage: string): Promise<string> => {
     try {
+      // 获取最新的配置
+      const saved = localStorage.getItem('stockAgentConfig');
+      const currentConfig = saved ? JSON.parse(saved) : config;
+
       const messageContent: any[] = [{ type: 'text', text: userMessage }];
 
       // 添加附件到消息内容
@@ -98,14 +127,14 @@ export default function StockAgent({ onClose }: StockAgentProps) {
         }
       });
 
-      const response = await fetch(`${config.baseUrl}/chat/completions`, {
+      const response = await fetch(`${currentConfig.baseUrl}/chat/completions`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${config.apiKey}`,
+          'Authorization': `Bearer ${currentConfig.apiKey}`,
         },
         body: JSON.stringify({
-          model: config.model,
+          model: currentConfig.model,
           messages: [
             {
               role: 'system',

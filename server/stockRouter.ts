@@ -215,6 +215,62 @@ async function fetchYahooChart(symbol: string, interval: string, range: string):
 }
 
 export const stockRouter = router({
+  testConnection: publicProcedure
+    .input(z.object({
+      baseUrl: z.string(),
+      apiKey: z.string(),
+      model: z.string(),
+    }))
+    .mutation(async ({ input }) => {
+      try {
+        const { baseUrl, apiKey, model } = input;
+        
+        // 构建请求 URL
+        const url = baseUrl.endsWith('/') ? baseUrl + 'chat/completions' : baseUrl + '/chat/completions';
+        
+        // 发送测试请求
+        const response = await axios.post(
+          url,
+          {
+            model: model,
+            messages: [
+              {
+                role: 'user',
+                content: 'Hello, are you working?',
+              },
+            ],
+            max_tokens: 10,
+          },
+          {
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${apiKey}`,
+            },
+            timeout: 10000,
+          }
+        );
+        
+        // 检查响应
+        if (response.status === 200 && response.data?.choices) {
+          return {
+            success: true,
+            message: 'AI 连接成功',
+          };
+        } else {
+          return {
+            success: false,
+            error: '无效的响应格式',
+          };
+        }
+      } catch (error: any) {
+        console.error('AI connection test failed:', error.message);
+        return {
+          success: false,
+          error: error.message || '连接失败',
+        };
+      }
+    }),
+
   getChart: publicProcedure
     .input(z.object({
       symbol: z.string(),

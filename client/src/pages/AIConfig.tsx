@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation } from 'wouter';
-import { ArrowLeft, Save, RotateCcw } from 'lucide-react';
+import { ArrowLeft, Save, RotateCcw, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -22,6 +22,9 @@ export default function AIConfig() {
   const [config, setConfig] = useState<AIConfig>(DEFAULT_CONFIG);
   const [isSaving, setIsSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'success' | 'error'>('idle');
+  const [isTesting, setIsTesting] = useState(false);
+  const [testStatus, setTestStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
+  const [testMessage, setTestMessage] = useState('');
 
   useEffect(() => {
     // 从 localStorage 加载配置
@@ -57,6 +60,10 @@ export default function AIConfig() {
 
       // 保存到 localStorage
       localStorage.setItem('stockAgentConfig', JSON.stringify(config));
+      
+      // 触发自定义事件以通知 Stock Agent 组件
+      window.dispatchEvent(new Event('configUpdated'));
+      
       setSaveStatus('success');
 
       // 2秒后重置状态
@@ -74,10 +81,66 @@ export default function AIConfig() {
   const handleReset = () => {
     setConfig(DEFAULT_CONFIG);
     localStorage.setItem('stockAgentConfig', JSON.stringify(DEFAULT_CONFIG));
+    window.dispatchEvent(new Event('configUpdated'));
     setSaveStatus('success');
     setTimeout(() => {
       setSaveStatus('idle');
     }, 2000);
+  };
+
+  const handleTest = async () => {
+    // 验证配置
+    if (!config.baseUrl.trim() || !config.apiKey.trim() || !config.model.trim()) {
+      setTestStatus('error');
+      setTestMessage('请先填写所有配置项');
+      setTimeout(() => {
+        setTestStatus('idle');
+        setTestMessage('');
+      }, 3000);
+      return;
+    }
+
+    setIsTesting(true);
+    setTestStatus('testing');
+    setTestMessage('正在测试连接...');
+
+    try {
+      // 调用测试 API
+      const response = await fetch('/api/trpc/stockAgent.testConnection', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          baseUrl: config.baseUrl,
+          apiKey: config.apiKey,
+          model: config.model,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      if (data.result?.success) {
+        setTestStatus('success');
+        setTestMessage('✓ AI 连接成功！配置正确。');
+      } else {
+        setTestStatus('error');
+        setTestMessage(`✗ 连接失败: ${data.result?.error || '未知错误'}`);
+      }
+    } catch (error) {
+      setTestStatus('error');
+      setTestMessage(`✗ 测试失败: ${error instanceof Error ? error.message : '网络错误'}`);
+    } finally {
+      setIsTesting(false);
+      setTimeout(() => {
+        setTestStatus('idle');
+        setTestMessage('');
+      }, 4000);
+    }
   };
 
   return (
@@ -166,6 +229,24 @@ export default function AIConfig() {
               </div>
             )}
 
+            {/* Test Status Message */}
+            {testStatus === 'success' && (
+              <div className="p-3 bg-green-500/10 border border-green-500/20 rounded-md text-sm text-green-700 dark:text-green-400">
+                {testMessage}
+              </div>
+            )}
+            {testStatus === 'error' && (
+              <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-md text-sm text-red-700 dark:text-red-400">
+                {testMessage}
+              </div>
+            )}
+            {testStatus === 'testing' && (
+              <div className="p-3 bg-blue-500/10 border border-blue-500/20 rounded-md text-sm text-blue-700 dark:text-blue-400 flex items-center gap-2">
+                <div className="animate-spin">⏳</div>
+                {testMessage}
+              </div>
+            )}
+
             {/* Action Buttons */}
             <div className="flex gap-3 pt-4">
               <Button
@@ -175,6 +256,15 @@ export default function AIConfig() {
               >
                 <Save size={16} className="mr-2" />
                 {isSaving ? '保存中...' : '保存配置'}
+              </Button>
+              <Button
+                onClick={handleTest}
+                disabled={isTesting}
+                variant="secondary"
+                className="flex-1"
+              >
+                <Zap size={16} className="mr-2" />
+                {isTesting ? '测试中...' : '测试连接'}
               </Button>
               <Button
                 onClick={handleReset}
@@ -194,6 +284,7 @@ export default function AIConfig() {
               <ul className="text-xs text-blue-800 dark:text-blue-400 space-y-1">
                 <li>• 配置更改后，Stock Agent 会立即使用新的参数</li>
                 <li>• API Key 存储在浏览器本地，不会上传到服务器</li>
+                <li>• 点击"测试连接"验证 API 配置是否正确</li>
                 <li>• 如果遇到连接问题，请检查 Base URL 和 API Key 是否正确</li>
                 <li>• 不同的模型可能有不同的性能和成本</li>
               </ul>
