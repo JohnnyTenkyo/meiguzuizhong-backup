@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { MessageCircle, X } from 'lucide-react';
+import { MessageCircle } from 'lucide-react';
 import StockAgent from './StockAgent';
 import FociAssistant from './FociAssistant';
 import { cn } from '@/lib/utils';
@@ -21,8 +21,13 @@ export default function AIAssistantContainer() {
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
-  const handleAssistantToggle = (type: AssistantType) => {
-    setActiveAssistant(activeAssistant === type ? null : type);
+  const handleStockAgentToggle = () => {
+    setActiveAssistant(activeAssistant === 'stock' ? null : 'stock');
+  };
+
+  const handleFociToggle = () => {
+    // Foci 助手直接弹出，不需要切换状态
+    setActiveAssistant('foci');
   };
 
   const handleClose = () => {
@@ -35,12 +40,12 @@ export default function AIAssistantContainer() {
       <div
         className={cn(
           'flex flex-col gap-2 transition-all duration-300 ease-out',
-          activeAssistant ? 'translate-x-0' : 'translate-x-[calc(100%-3.5rem)]'
+          activeAssistant === 'stock' ? 'translate-x-0' : 'translate-x-[calc(100%-3.5rem)]'
         )}
       >
         {/* Stock Agent 标签 */}
         <button
-          onClick={() => handleAssistantToggle('stock')}
+          onClick={handleStockAgentToggle}
           className={cn(
             'flex items-center gap-2 px-4 py-2.5 rounded-l-full transition-all duration-200',
             'bg-gradient-to-r from-blue-500 to-cyan-500 text-white shadow-lg hover:shadow-xl',
@@ -55,7 +60,7 @@ export default function AIAssistantContainer() {
 
         {/* Foci 助手标签 */}
         <button
-          onClick={() => handleAssistantToggle('foci')}
+          onClick={handleFociToggle}
           className={cn(
             'flex items-center gap-2 px-4 py-2.5 rounded-l-full transition-all duration-200',
             'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg hover:shadow-xl',
@@ -79,7 +84,7 @@ export default function AIAssistantContainer() {
       {/* Foci 助手窗口 */}
       {activeAssistant === 'foci' && (
         <div className="absolute bottom-0 right-full mr-2">
-          <FociAssistant />
+          <FociAssistant onClose={handleClose} />
         </div>
       )}
     </div>

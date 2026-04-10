@@ -128,7 +128,11 @@ function detectIntent(msg: string): { tool: string; args: Record<string, any>; d
   return { tool: 'search_viewpoints', args: { keyword: msg }, description: `正在搜索相关观点...` };
 }
 
-export default function FociAssistant() {
+interface FociAssistantProps {
+  onClose?: () => void;
+}
+
+export default function FociAssistant({ onClose }: FociAssistantProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -261,7 +265,7 @@ export default function FociAssistant() {
           <button onClick={() => setIsMinimized(!isMinimized)} className="p-1 rounded hover:bg-accent transition-colors">
             {isMinimized ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
           </button>
-          <button onClick={() => setIsOpen(false)} className="p-1 rounded hover:bg-accent transition-colors">
+          <button onClick={() => { setIsOpen(false); onClose?.(); }} className="p-1 rounded hover:bg-accent transition-colors">
             <X size={14} />
           </button>
         </div>
