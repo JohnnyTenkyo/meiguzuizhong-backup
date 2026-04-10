@@ -133,7 +133,8 @@ interface FociAssistantProps {
 }
 
 export default function FociAssistant({ onClose }: FociAssistantProps) {
-  const [isOpen, setIsOpen] = useState(false);
+  // 当有 onClose 属性时，说明是作为 AIAssistantContainer 的子组件，应该默认打开
+  const [isOpen, setIsOpen] = useState(!!onClose);
   const [isMinimized, setIsMinimized] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
@@ -229,8 +230,8 @@ export default function FociAssistant({ onClose }: FociAssistantProps) {
     { label: 'NaNa说美股 博主持仓', icon: <Eye size={12} /> },
   ];
 
-  // Floating button
-  if (!isOpen) {
+  // 如果没有 onClose 属性（独立使用），则显示浮窗按钮
+  if (!isOpen && !onClose) {
     return (
       <button
         onClick={() => setIsOpen(true)}
@@ -241,6 +242,11 @@ export default function FociAssistant({ onClose }: FociAssistantProps) {
         <span className="flex h-2 w-2 rounded-full bg-emerald-300 animate-pulse" />
       </button>
     );
+  }
+
+  // 如果 isOpen 为 false 但有 onClose，说明窗口已关闭，返回 null
+  if (!isOpen && onClose) {
+    return null;
   }
 
   return (
