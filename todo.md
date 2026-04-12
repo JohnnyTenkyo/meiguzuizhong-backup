@@ -346,3 +346,9 @@
 - [x] 修复前端 tRPC 调用方式
 - [x] 使用正确的 trpc 客户端调用 testConnection
 - [x] 测试 AI 连接功能
+
+## 修复 Stock Agent 无法获取 AI 回复问题
+- [x] 检查 CORS 跨域问题
+- [x] 修复 AI API 调用方式
+- [x] 添加后端代理 API 调用
+- [x] 测试对话功能

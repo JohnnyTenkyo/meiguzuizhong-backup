@@ -215,6 +215,61 @@ async function fetchYahooChart(symbol: string, interval: string, range: string):
 }
 
 export const stockRouter = router({
+  callAI: publicProcedure
+    .input(z.object({
+      baseUrl: z.string(),
+      apiKey: z.string(),
+      model: z.string(),
+      messages: z.array(z.object({
+        role: z.enum(['system', 'user', 'assistant']),
+        content: z.union([z.string(), z.array(z.any())]),
+      })),
+      temperature: z.number().optional(),
+      max_tokens: z.number().optional(),
+    }))
+    .mutation(async ({ input }) => {
+      try {
+        const { baseUrl, apiKey, model, messages, temperature = 0.7, max_tokens = 1000 } = input;
+        
+        // 构建请求 URL
+        const url = baseUrl.endsWith('/') ? baseUrl + 'chat/completions' : baseUrl + '/chat/completions';
+        
+        // 发送请求到 AI API
+        const response = await axios.post(
+          url,
+          {
+            model: model,
+            messages: messages,
+            temperature: temperature,
+            max_tokens: max_tokens,
+          },
+          {
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${apiKey}`,
+            },
+            timeout: 30000,
+          }
+        );
+        
+        // 提取回复内容
+        if (response.status === 200 && response.data?.choices?.[0]?.message?.content) {
+          return {
+            content: response.data.choices[0].message.content,
+          };
+        } else {
+          return {
+            content: '无法获取回复，请重试。',
+          };
+        }
+      } catch (error: any) {
+        console.error('AI call failed:', error.message);
+        return {
+          content: `错误: ${error.message || '无法连接到 AI 服务'}`,
+        };
+      }
+    }),
+
   testConnection: publicProcedure
     .input(z.object({
       baseUrl: z.string(),

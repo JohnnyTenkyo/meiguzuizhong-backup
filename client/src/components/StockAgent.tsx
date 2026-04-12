@@ -1,8 +1,10 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { MessageCircle, X, Send, Loader2, Settings, Upload, File, Image } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
+import { trpc } from '@/lib/trpc';
+import { useLocation } from 'wouter';
 
 type ChatMessage = {
   role: 'user' | 'assistant';
@@ -26,6 +28,7 @@ interface StockAgentProps {
 }
 
 export default function StockAgent({ onClose }: StockAgentProps) {
+  const [, setLocation] = useLocation();
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       role: 'assistant',
@@ -46,6 +49,7 @@ export default function StockAgent({ onClose }: StockAgentProps) {
   });
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const callAIMutation = trpc.stock.callAI.useMutation();
 
   // 监听 localStorage 配置变化
   useEffect(() => {
@@ -127,39 +131,30 @@ export default function StockAgent({ onClose }: StockAgentProps) {
         }
       });
 
-      const response = await fetch(`${currentConfig.baseUrl}/chat/completions`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${currentConfig.apiKey}`,
-        },
-        body: JSON.stringify({
-          model: currentConfig.model,
-          messages: [
-            {
-              role: 'system',
-              content: '你是一个专业的股票分析助手。你可以分析股票走势、解读技术指标、讨论投资策略。请用中文回答，并提供专业的分析建议。如果用户上传了图片，请分析图片内容并提供相关建议。',
-            },
-            ...messages.map(m => ({
-              role: m.role,
-              content: m.content,
-            })),
-            {
-              role: 'user',
-              content: messageContent.length > 1 ? messageContent : userMessage,
-            },
-          ],
-          temperature: 0.7,
-          max_tokens: 1000,
-        }),
+      // 通过后端代理调用 AI API，避免 CORS 问题
+      const result = await callAIMutation.mutateAsync({
+        baseUrl: currentConfig.baseUrl,
+        apiKey: currentConfig.apiKey,
+        model: currentConfig.model,
+        messages: [
+          {
+            role: 'system',
+            content: '你是一个专业的股票分析助手。你可以分析股票走势、解读技术指标、讨论投资策略。请用中文回答，并提供专业的分析建议。如果用户上传了图片，请分析图片内容并提供相关建议。',
+          },
+          ...messages.map(m => ({
+            role: m.role,
+            content: m.content,
+          })),
+          {
+            role: 'user',
+            content: messageContent.length > 1 ? messageContent : userMessage,
+          },
+        ],
+        temperature: 0.7,
+        max_tokens: 1000,
       });
 
-      if (!response.ok) {
-        throw new Error(`API error: ${response.status}`);
-      }
-
-      const data = await response.json();
-      return data.choices?.[0]?.message?.content || '无法获取回复，请重试。';
+      return result.content || '无法获取回复，请重试。';
     } catch (error) {
       console.error('Stock Agent error:', error);
       return '抱歉，我遇到了一些问题。请检查 API 配置是否正确。';
@@ -181,59 +176,50 @@ export default function StockAgent({ onClose }: StockAgentProps) {
     setAttachments([]);
     setIsLoading(true);
 
-    try {
-      const response = await callStockAgent(input || '请分析这些文件');
-      const assistantMessage: ChatMessage = {
-        role: 'assistant',
-        content: response,
-        timestamp: Date.now(),
-      };
-      setMessages(prev => [...prev, assistantMessage]);
-    } catch (error) {
-      console.error('Error:', error);
-      const errorMessage: ChatMessage = {
-        role: 'assistant',
-        content: '抱歉，发生了错误。请稍后重试。',
-        timestamp: Date.now(),
-      };
-      setMessages(prev => [...prev, errorMessage]);
-    } finally {
-      setIsLoading(false);
-    }
+    const assistantReply = await callStockAgent(input || `[已上传 ${attachments.length} 个文件]`);
+
+    setMessages(prev => [...prev, {
+      role: 'assistant',
+      content: assistantReply,
+      timestamp: Date.now(),
+    }]);
+
+    setIsLoading(false);
   };
 
   return (
-    <div className="w-96 h-[600px] bg-background border border-border rounded-lg shadow-2xl flex flex-col">
+    <div className="fixed bottom-4 right-4 w-96 h-[600px] bg-background border border-border rounded-lg shadow-lg flex flex-col z-50">
       {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-border bg-gradient-to-r from-blue-500/10 to-cyan-500/10">
+      <div className="flex items-center justify-between p-4 border-b border-border bg-gradient-to-r from-blue-600 to-blue-700 rounded-t-lg">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-full bg-gradient-to-r from-blue-500 to-cyan-500 flex items-center justify-center">
-            <MessageCircle size={16} className="text-white" />
-          </div>
+          <MessageCircle size={20} className="text-white" />
           <div>
-            <div className="font-semibold text-sm">Stock Agent</div>
-            <div className="text-xs text-muted-foreground">专业股票分析助手</div>
+            <h2 className="font-bold text-white">Stock Agent</h2>
+            <p className="text-xs text-blue-100">AI 股票分析助手</p>
           </div>
         </div>
-        <div className="flex items-center gap-1">
-          <a
-            href="/ai-config"
-            className="p-1.5 hover:bg-secondary rounded-md transition-colors inline-block"
-            title="AI 配置页面"
-          >
-            <Settings size={18} />
-          </a>
+        <div className="flex items-center gap-2">
           <button
-            onClick={onClose}
-            className="p-1.5 hover:bg-secondary rounded-md transition-colors"
+            onClick={() => setLocation('/ai-config')}
+            className="p-1.5 hover:bg-blue-500 rounded transition-colors"
+            title="配置 AI"
           >
-            <X size={18} />
+            <Settings size={18} className="text-white" />
           </button>
+          {onClose && (
+            <button
+              onClick={onClose}
+              className="p-1.5 hover:bg-blue-500 rounded transition-colors"
+              title="关闭"
+            >
+              <X size={18} className="text-white" />
+            </button>
+          )}
         </div>
       </div>
 
-      {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-3">
+      {/* Messages Container */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {messages.map((msg, idx) => (
           <div
             key={idx}
@@ -242,32 +228,25 @@ export default function StockAgent({ onClose }: StockAgentProps) {
               msg.role === 'user' ? 'justify-end' : 'justify-start'
             )}
           >
-            <div className={cn('max-w-xs')}>
-              <div
-                className={cn(
-                  'px-3 py-2 rounded-lg text-sm break-words',
-                  msg.role === 'user'
-                    ? 'bg-primary text-primary-foreground'
-                    : 'bg-secondary text-secondary-foreground'
-                )}
-              >
-                {msg.content}
-              </div>
+            <div
+              className={cn(
+                'max-w-xs px-4 py-2 rounded-lg',
+                msg.role === 'user'
+                  ? 'bg-blue-600 text-white rounded-br-none'
+                  : 'bg-secondary text-foreground rounded-bl-none'
+              )}
+            >
+              <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
               {msg.attachments && msg.attachments.length > 0 && (
                 <div className="mt-2 space-y-1">
                   {msg.attachments.map((att, i) => (
-                    <div key={i} className="flex items-center gap-2 text-xs">
+                    <div key={i} className="text-xs opacity-75 flex items-center gap-1">
                       {att.type.startsWith('image/') ? (
-                        <>
-                          <Image size={14} className="text-muted-foreground" />
-                          <img src={att.url} alt={att.name} className="max-w-xs max-h-32 rounded" />
-                        </>
+                        <Image size={14} />
                       ) : (
-                        <>
-                          <File size={14} className="text-muted-foreground" />
-                          <span className="text-muted-foreground">{att.name}</span>
-                        </>
+                        <File size={14} />
                       )}
+                      {att.name}
                     </div>
                   ))}
                 </div>
@@ -277,9 +256,8 @@ export default function StockAgent({ onClose }: StockAgentProps) {
         ))}
         {isLoading && (
           <div className="flex justify-start">
-            <div className="bg-secondary text-secondary-foreground px-3 py-2 rounded-lg flex items-center gap-2">
-              <Loader2 size={14} className="animate-spin" />
-              <span className="text-sm">思考中...</span>
+            <div className="bg-secondary text-foreground px-4 py-2 rounded-lg rounded-bl-none">
+              <Loader2 size={16} className="animate-spin" />
             </div>
           </div>
         )}
@@ -288,22 +266,25 @@ export default function StockAgent({ onClose }: StockAgentProps) {
 
       {/* Attachments Preview */}
       {attachments.length > 0 && (
-        <div className="px-4 py-2 border-t border-border bg-secondary/30 space-y-2">
+        <div className="px-4 py-2 border-t border-border bg-secondary/50 space-y-2">
           <div className="text-xs font-medium text-muted-foreground">已上传文件:</div>
           <div className="flex flex-wrap gap-2">
             {attachments.map((att, idx) => (
-              <div key={idx} className="flex items-center gap-1 px-2 py-1 bg-background rounded text-xs">
+              <div
+                key={idx}
+                className="flex items-center gap-1 bg-background px-2 py-1 rounded text-xs"
+              >
                 {att.type.startsWith('image/') ? (
                   <Image size={12} />
                 ) : (
                   <File size={12} />
                 )}
-                <span className="truncate max-w-[150px]">{att.name}</span>
+                <span className="truncate max-w-[100px]">{att.name}</span>
                 <button
                   onClick={() => removeAttachment(idx)}
-                  className="ml-1 hover:text-red-500 transition-colors"
+                  className="ml-1 hover:text-red-500"
                 >
-                  <X size={12} />
+                  ×
                 </button>
               </div>
             ))}
@@ -311,31 +292,35 @@ export default function StockAgent({ onClose }: StockAgentProps) {
         </div>
       )}
 
-      {/* Input */}
-      <div className="p-3 border-t border-border space-y-2">
+      {/* Input Area */}
+      <div className="p-4 border-t border-border space-y-2">
         <div className="flex gap-2">
           <Input
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && handleSendMessage()}
-            placeholder="输入问题或上传文件..."
-            className="h-9 text-sm"
+            onKeyPress={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                handleSendMessage();
+              }
+            }}
+            placeholder="输入你的问题..."
             disabled={isLoading}
+            className="flex-1"
           />
           <input
             ref={fileInputRef}
             type="file"
             multiple
-            accept="image/*,.pdf,.doc,.docx,.txt,.csv"
             onChange={handleFileSelect}
             className="hidden"
+            accept="image/*,.pdf,.doc,.docx,.txt"
           />
           <Button
             onClick={() => fileInputRef.current?.click()}
-            disabled={isLoading}
-            size="sm"
             variant="outline"
-            className="px-2 h-9"
+            size="sm"
+            disabled={isLoading}
             title="上传文件"
           >
             <Upload size={16} />
@@ -344,7 +329,6 @@ export default function StockAgent({ onClose }: StockAgentProps) {
             onClick={handleSendMessage}
             disabled={isLoading || (!input.trim() && attachments.length === 0)}
             size="sm"
-            className="px-3 h-9"
           >
             <Send size={16} />
           </Button>
