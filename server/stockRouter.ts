@@ -4,6 +4,7 @@ import axios from "axios";
 import { calculateMomentum, formatMomentumForChart } from "./tradingMomentum";
 import { fetchFinnhubCandles, fetchFinnhubQuote } from "./finnhubAdapter";
 import { fetchAlphaVantageCandles, fetchAlphaVantageQuote } from "./alphaVantageAdapter";
+import { getQuote, getKline, getPortfolio, checkOpenDStatus, formatStockCode } from "./futuApi";
 
 // In-memory cache
 const cache: Map<string, { data: any; expires: number }> = new Map();
@@ -215,6 +216,77 @@ async function fetchYahooChart(symbol: string, interval: string, range: string):
 }
 
 export const stockRouter = router({
+  // 富途 API 相关过程
+  futuGetQuote: publicProcedure
+    .input(z.object({
+      symbols: z.array(z.string()),
+    }))
+    .mutation(async ({ input }) => {
+      try {
+        const result = await getQuote(input.symbols);
+        return result;
+      } catch (error: any) {
+        return {
+          success: false,
+          error: error.message || '获取报价失败',
+        };
+      }
+    }),
+
+  futuGetKline: publicProcedure
+    .input(z.object({
+      symbol: z.string(),
+      period: z.string(),
+      count: z.number().optional(),
+    }))
+    .mutation(async ({ input }) => {
+      try {
+        const result = await getKline(input.symbol, input.period, input.count);
+        return result;
+      } catch (error: any) {
+        return {
+          success: false,
+          error: error.message || '获取 K 线失败',
+        };
+      }
+    }),
+
+  futuGetPortfolio: publicProcedure
+    .mutation(async () => {
+      try {
+        const result = await getPortfolio();
+        return result;
+      } catch (error: any) {
+        return {
+          success: false,
+          error: error.message || '获取持仓失败',
+        };
+      }
+    }),
+
+  futuCheckStatus: publicProcedure
+    .mutation(async () => {
+      try {
+        const result = await checkOpenDStatus();
+        return result;
+      } catch (error: any) {
+        return {
+          success: false,
+          error: error.message || '检测 OpenD 状态失败',
+        };
+      }
+    }),
+
+  futuFormatCode: publicProcedure
+    .input(z.object({
+      input: z.string(),
+    }))
+    .query(({ input }) => {
+      return {
+        formatted: formatStockCode(input.input),
+      };
+    }),
+
   callAI: publicProcedure
     .input(z.object({
       baseUrl: z.string(),

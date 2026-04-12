@@ -352,3 +352,12 @@
 - [x] 修复 AI API 调用方式
 - [x] 添加后端代理 API 调用
 - [x] 测试对话功能
+
+## 安装富途牵牵 OpenD 和 Skills
+- [x] 下载 opend-skills.zip 压缩包
+- [x] 解压到临时目录
+- [x] 安装 Skills 到全局目录
+- [x] 验证 install-futu-opend 和 futuapi 两个 skill 已安装
+- [x] 调用 install-futu-opend 自动安装 OpenD 和 Python SDK
+- [x] 集成富途 API 到 Stock Agent
+- [x] 测试富途数据查询功能 (16个测试全部通过)
