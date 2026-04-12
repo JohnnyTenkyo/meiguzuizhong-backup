@@ -1054,7 +1054,7 @@ export const stockRouter = router({
         threadId: z.number(),
         role: z.enum(["user", "assistant"]),
         content: z.string(),
-        metadata: z.record(z.any()).optional(),
+        metadata: z.record(z.string(), z.any()).optional(),
       })
     )
     .mutation(async ({ input }) => {
@@ -1094,5 +1094,42 @@ export const stockRouter = router({
     .input(z.object({ threadId: z.number() }))
     .query(async ({ input }) => {
       return getConversationStats(input.threadId);
-    })
+    }),
+
+  // 站内数据查询 API
+  queryStockData: publicProcedure
+    .input(
+      z.object({
+        symbol: z.string(),
+        dataType: z.enum(["kline", "info", "indicators", "all"]).default("all"),
+        interval: z.string().default("1d"),
+      })
+    )
+    .query(async ({ input }) => {
+      const { symbol, dataType, interval } = input;
+      const { queryKlineData, queryStockInfo, queryTechnicalIndicators } = await import(
+        "./siteDataQuery"
+      );
+
+      try {
+        if (dataType === "kline") {
+          return { kline: await queryKlineData(symbol, interval) };
+        } else if (dataType === "info") {
+          return { info: await queryStockInfo(symbol) };
+        } else if (dataType === "indicators") {
+          return { indicators: await queryTechnicalIndicators(symbol, interval) };
+        } else {
+          // all
+          const [kline, info, indicators] = await Promise.all([
+            queryKlineData(symbol, interval),
+            queryStockInfo(symbol),
+            queryTechnicalIndicators(symbol, interval),
+          ]);
+          return { kline, info, indicators };
+        }
+      } catch (error: any) {
+        console.error(`Failed to query stock data for ${symbol}:`, error.message);
+        return { error: error.message };
+      }
+    }),
 });
