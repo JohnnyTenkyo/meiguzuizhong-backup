@@ -154,3 +154,34 @@ export type Watchlist = typeof watchlist.$inferSelect;
 export type InsertWatchlist = typeof watchlist.$inferInsert;
 
 // Indexes for faster lookups (defined inline in table)
+
+/**
+ * AI Agent conversation threads table
+ */
+export const aiConversationThreads = mysqlTable("ai_conversation_threads", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  title: varchar("title", { length: 256 }).notNull(),
+  agentType: mysqlEnum("agentType", ["stock", "foci"]).default("stock").notNull(),
+  status: mysqlEnum("status", ["active", "archived"]).default("active").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type AIConversationThread = typeof aiConversationThreads.$inferSelect;
+export type InsertAIConversationThread = typeof aiConversationThreads.$inferInsert;
+
+/**
+ * AI Agent conversation messages table
+ */
+export const aiConversationMessages = mysqlTable("ai_conversation_messages", {
+  id: int("id").autoincrement().primaryKey(),
+  threadId: int("threadId").notNull().references(() => aiConversationThreads.id, { onDelete: "cascade" }),
+  role: mysqlEnum("role", ["user", "assistant"]).notNull(),
+  content: text("content").notNull(),
+  metadata: text("metadata"), // JSON: contains attachments, context data, etc.
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type AIConversationMessage = typeof aiConversationMessages.$inferSelect;
+export type InsertAIConversationMessage = typeof aiConversationMessages.$inferInsert;
