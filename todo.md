@@ -341,3 +341,8 @@
 - [x] 在 callStockAgent 中获取最新配置
 - [x] 触发自定义事件以通知配置更新
 - [x] 测试配置更新后的对话功能
+
+## 修复 AI 测试功能 HTTP 404 问题
+- [x] 修复前端 tRPC 调用方式
+- [x] 使用正确的 trpc 客户端调用 testConnection
+- [x] 测试 AI 连接功能

@@ -4,6 +4,7 @@ import { ArrowLeft, Save, RotateCcw, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { trpc } from '@/lib/trpc';
 
 interface AIConfig {
   baseUrl: string;
@@ -25,6 +26,7 @@ export default function AIConfig() {
   const [isTesting, setIsTesting] = useState(false);
   const [testStatus, setTestStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
   const [testMessage, setTestMessage] = useState('');
+  const testConnectionMutation = trpc.stock.testConnection.useMutation();
 
   useEffect(() => {
     // 从 localStorage 加载配置
@@ -105,31 +107,19 @@ export default function AIConfig() {
     setTestMessage('正在测试连接...');
 
     try {
-      // 调用测试 API
-      const response = await fetch('/api/trpc/stockAgent.testConnection', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          baseUrl: config.baseUrl,
-          apiKey: config.apiKey,
-          model: config.model,
-        }),
+      // 使用 tRPC 客户端调用 testConnection
+      const result = await testConnectionMutation.mutateAsync({
+        baseUrl: config.baseUrl,
+        apiKey: config.apiKey,
+        model: config.model,
       });
 
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
-      }
-
-      const data = await response.json();
-
-      if (data.result?.success) {
+      if (result.success) {
         setTestStatus('success');
         setTestMessage('✓ AI 连接成功！配置正确。');
       } else {
         setTestStatus('error');
-        setTestMessage(`✗ 连接失败: ${data.result?.error || '未知错误'}`);
+        setTestMessage(`✗ 连接失败: ${result.error || '未知错误'}`);
       }
     } catch (error) {
       setTestStatus('error');
