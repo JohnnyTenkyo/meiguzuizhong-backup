@@ -231,8 +231,11 @@ export const stockRouter = router({
       try {
         const { baseUrl, apiKey, model, messages, temperature = 0.7, max_tokens = 1000 } = input;
         
-        // 构建请求 URL
-        const url = baseUrl.endsWith('/') ? baseUrl + 'chat/completions' : baseUrl + '/chat/completions';
+        // 构建请求 URL - 处理已包含完整路径的情况
+        let url = baseUrl;
+        if (!url.includes('/chat/completions')) {
+          url = url.endsWith('/') ? url + 'chat/completions' : url + '/chat/completions';
+        }
         
         // 发送请求到 AI API
         const response = await axios.post(
@@ -280,8 +283,11 @@ export const stockRouter = router({
       try {
         const { baseUrl, apiKey, model } = input;
         
-        // 构建请求 URL
-        const url = baseUrl.endsWith('/') ? baseUrl + 'chat/completions' : baseUrl + '/chat/completions';
+        // 构建请求 URL - 处理已包含完整路径的情况
+        let url = baseUrl;
+        if (!url.includes('/chat/completions')) {
+          url = url.endsWith('/') ? url + 'chat/completions' : url + '/chat/completions';
+        }
         
         // 发送测试请求
         const response = await axios.post(
