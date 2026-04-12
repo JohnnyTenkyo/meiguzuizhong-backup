@@ -1,10 +1,22 @@
 import { z } from "zod";
-import { publicProcedure, router } from "./_core/trpc";
+import { publicProcedure, router, protectedProcedure } from "./_core/trpc";
 import axios from "axios";
 import { calculateMomentum, formatMomentumForChart } from "./tradingMomentum";
 import { fetchFinnhubCandles, fetchFinnhubQuote } from "./finnhubAdapter";
 import { fetchAlphaVantageCandles, fetchAlphaVantageQuote } from "./alphaVantageAdapter";
 import { getQuote, getKline, getPortfolio, checkOpenDStatus, formatStockCode } from "./futuApi";
+import {
+  createConversationThread,
+  getUserConversationThreads,
+  getConversationThread,
+  getConversationMessages,
+  getLatestConversationMessages,
+  saveConversationMessage,
+  updateConversationThreadTitle,
+  archiveConversationThread,
+  deleteConversationThread,
+  getConversationStats,
+} from "./conversationDb";
 
 // In-memory cache
 const cache: Map<string, { data: any; expires: number }> = new Map();
@@ -984,4 +996,103 @@ export const stockRouter = router({
         return {};
       }
     }),
+
+  // 对话管理 API
+  createConversation: protectedProcedure
+    .input(
+      z.object({
+        title: z.string().min(1, "对话标题不能为空"),
+        agentType: z.enum(["stock", "foci"]).default("stock"),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      return createConversationThread(ctx.user.id, input.title, input.agentType);
+    }),
+
+  getConversations: protectedProcedure
+    .input(
+      z.object({
+        agentType: z.enum(["stock", "foci"]).optional(),
+      })
+    )
+    .query(async ({ ctx, input }) => {
+      return getUserConversationThreads(ctx.user.id, input.agentType);
+    }),
+
+  getConversation: protectedProcedure
+    .input(z.object({ threadId: z.number() }))
+    .query(async ({ input }) => {
+      return getConversationThread(input.threadId);
+    }),
+
+  getMessages: protectedProcedure
+    .input(
+      z.object({
+        threadId: z.number(),
+        limit: z.number().default(20),
+        offset: z.number().default(0),
+      })
+    )
+    .query(async ({ input }) => {
+      return getConversationMessages(input.threadId, input.limit, input.offset);
+    }),
+
+  getLatestMessages: protectedProcedure
+    .input(
+      z.object({
+        threadId: z.number(),
+        count: z.number().default(20),
+      })
+    )
+    .query(async ({ input }) => {
+      return getLatestConversationMessages(input.threadId, input.count);
+    }),
+
+  saveMessage: protectedProcedure
+    .input(
+      z.object({
+        threadId: z.number(),
+        role: z.enum(["user", "assistant"]),
+        content: z.string(),
+        metadata: z.record(z.any()).optional(),
+      })
+    )
+    .mutation(async ({ input }) => {
+      return saveConversationMessage(
+        input.threadId,
+        input.role,
+        input.content,
+        input.metadata
+      );
+    }),
+
+  updateConversationTitle: protectedProcedure
+    .input(
+      z.object({
+        threadId: z.number(),
+        title: z.string().min(1, "对话标题不能为空"),
+      })
+    )
+    .mutation(async ({ input }) => {
+      return updateConversationThreadTitle(input.threadId, input.title);
+    }),
+
+  archiveConversation: protectedProcedure
+    .input(z.object({ threadId: z.number() }))
+    .mutation(async ({ input }) => {
+      return archiveConversationThread(input.threadId);
+    }),
+
+  deleteConversation: protectedProcedure
+    .input(z.object({ threadId: z.number() }))
+    .mutation(async ({ input }) => {
+      await deleteConversationThread(input.threadId);
+      return { success: true };
+    }),
+
+  getConversationStats: protectedProcedure
+    .input(z.object({ threadId: z.number() }))
+    .query(async ({ input }) => {
+      return getConversationStats(input.threadId);
+    })
 });
