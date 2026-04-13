@@ -175,13 +175,13 @@ export default function Home() {
         </div>
         {isLoading ? (
           <div className="text-muted-foreground text-xs">加载中...</div>
-        ) : q ? (
+        ) : q && q.price !== null ? (
           <div className="flex items-end justify-between">
             <span className="data-mono text-lg font-bold">
               {q.price >= 10000 ? q.price.toFixed(0) : q.price.toFixed(2)}
             </span>
             <span className={`data-mono text-sm font-medium px-2 py-0.5 rounded ${
-              q.change >= 0 
+              (q.change || 0) >= 0 
                 ? 'text-red-500 bg-red-500/10' 
                 : 'text-green-500 bg-green-500/10'
             }`}>

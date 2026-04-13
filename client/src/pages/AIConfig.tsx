@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation } from 'wouter';
-import { ArrowLeft, Save, RotateCcw, Zap } from 'lucide-react';
+import { ArrowLeft, Save, RotateCcw, Zap, Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { trpc } from '@/lib/trpc';
 
 interface AIConfig {
@@ -18,6 +19,8 @@ const DEFAULT_CONFIG: AIConfig = {
   model: 'gpt-5.4-nano',
 };
 
+const CORRECT_PASSCODE = '940531';
+
 export default function AIConfig() {
   const [, setLocation] = useLocation();
   const [config, setConfig] = useState<AIConfig>(DEFAULT_CONFIG);
@@ -26,11 +29,19 @@ export default function AIConfig() {
   const [isTesting, setIsTesting] = useState(false);
   const [testStatus, setTestStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
   const [testMessage, setTestMessage] = useState('');
+  const [showPasscodeDialog, setShowPasscodeDialog] = useState(false);
+  const [passcode, setPasscode] = useState('');
+  const [passcodeError, setPasscodeError] = useState('');
+  const [pendingAction, setPendingAction] = useState<'save' | 'reset' | null>(null);
+  const [isConfigInitialized, setIsConfigInitialized] = useState(false);
+  
   const testConnectionMutation = trpc.stock.testConnection.useMutation();
 
   useEffect(() => {
     // 从 localStorage 加载配置
     const saved = localStorage.getItem('stockAgentConfig');
+    const hasSeenPasscode = localStorage.getItem('stockAgentPasscodeVerified');
+    
     if (saved) {
       try {
         setConfig(JSON.parse(saved));
@@ -38,9 +49,54 @@ export default function AIConfig() {
         console.error('Failed to load config:', error);
       }
     }
+    
+    setIsConfigInitialized(true);
   }, []);
 
-  const handleSave = async () => {
+  const handleSaveClick = () => {
+    // 如果是首次保存（没有验证过），直接保存
+    const hasVerified = localStorage.getItem('stockAgentPasscodeVerified');
+    if (!hasVerified) {
+      handleSaveWithPasscode();
+    } else {
+      // 已经验证过，再次修改需要输入验证码
+      setPendingAction('save');
+      setShowPasscodeDialog(true);
+      setPasscode('');
+      setPasscodeError('');
+    }
+  };
+
+  const handleResetClick = () => {
+    const hasVerified = localStorage.getItem('stockAgentPasscodeVerified');
+    if (!hasVerified) {
+      handleResetWithoutPasscode();
+    } else {
+      setPendingAction('reset');
+      setShowPasscodeDialog(true);
+      setPasscode('');
+      setPasscodeError('');
+    }
+  };
+
+  const handlePasscodeSubmit = () => {
+    if (passcode === CORRECT_PASSCODE) {
+      setShowPasscodeDialog(false);
+      setPasscodeError('');
+      
+      if (pendingAction === 'save') {
+        handleSaveWithPasscode();
+      } else if (pendingAction === 'reset') {
+        handleResetWithoutPasscode();
+      }
+      
+      setPendingAction(null);
+    } else {
+      setPasscodeError('验证码错误，请重试');
+    }
+  };
+
+  const handleSaveWithPasscode = async () => {
     setIsSaving(true);
     try {
       // 验证配置
@@ -62,6 +118,7 @@ export default function AIConfig() {
 
       // 保存到 localStorage
       localStorage.setItem('stockAgentConfig', JSON.stringify(config));
+      localStorage.setItem('stockAgentPasscodeVerified', 'true');
       
       // 触发自定义事件以通知 Stock Agent 组件
       window.dispatchEvent(new Event('configUpdated'));
@@ -80,9 +137,10 @@ export default function AIConfig() {
     }
   };
 
-  const handleReset = () => {
+  const handleResetWithoutPasscode = () => {
     setConfig(DEFAULT_CONFIG);
     localStorage.setItem('stockAgentConfig', JSON.stringify(DEFAULT_CONFIG));
+    localStorage.setItem('stockAgentPasscodeVerified', 'true');
     window.dispatchEvent(new Event('configUpdated'));
     setSaveStatus('success');
     setTimeout(() => {
@@ -132,6 +190,10 @@ export default function AIConfig() {
       }, 4000);
     }
   };
+
+  if (!isConfigInitialized) {
+    return null;
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -240,7 +302,7 @@ export default function AIConfig() {
             {/* Action Buttons */}
             <div className="flex gap-3 pt-4">
               <Button
-                onClick={handleSave}
+                onClick={handleSaveClick}
                 disabled={isSaving}
                 className="flex-1"
               >
@@ -257,7 +319,7 @@ export default function AIConfig() {
                 {isTesting ? '测试中...' : '测试连接'}
               </Button>
               <Button
-                onClick={handleReset}
+                onClick={handleResetClick}
                 variant="outline"
                 className="flex-1"
               >
@@ -272,16 +334,71 @@ export default function AIConfig() {
                 💡 提示
               </h3>
               <ul className="text-xs text-blue-800 dark:text-blue-400 space-y-1">
+                <li>• 首次保存配置时需要输入验证码</li>
+                <li>• 之后修改配置时每次都需要输入验证码进行认证</li>
                 <li>• 配置更改后，Stock Agent 会立即使用新的参数</li>
                 <li>• API Key 存储在浏览器本地，不会上传到服务器</li>
                 <li>• 点击"测试连接"验证 API 配置是否正确</li>
                 <li>• 如果遇到连接问题，请检查 Base URL 和 API Key 是否正确</li>
-                <li>• 不同的模型可能有不同的性能和成本</li>
               </ul>
             </div>
           </CardContent>
         </Card>
       </div>
+
+      {/* Passcode Dialog */}
+      <Dialog open={showPasscodeDialog} onOpenChange={setShowPasscodeDialog}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Lock size={20} />
+              安全认证
+            </DialogTitle>
+            <DialogDescription>
+              为了保护您的配置安全，请输入验证码
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">验证码</label>
+              <Input
+                type="password"
+                value={passcode}
+                onChange={(e) => {
+                  setPasscode(e.target.value);
+                  setPasscodeError('');
+                }}
+                onKeyPress={(e) => {
+                  if (e.key === 'Enter') {
+                    handlePasscodeSubmit();
+                  }
+                }}
+                placeholder="输入验证码"
+                className="text-center text-lg tracking-widest"
+                autoFocus
+              />
+              {passcodeError && (
+                <p className="text-xs text-red-600 dark:text-red-400">{passcodeError}</p>
+              )}
+            </div>
+            <div className="flex gap-3">
+              <Button
+                onClick={() => setShowPasscodeDialog(false)}
+                variant="outline"
+                className="flex-1"
+              >
+                取消
+              </Button>
+              <Button
+                onClick={handlePasscodeSubmit}
+                className="flex-1"
+              >
+                确认
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

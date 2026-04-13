@@ -315,6 +315,69 @@ export const stockRouter = router({
       try {
         const { baseUrl, apiKey, model, messages, temperature = 0.7, max_tokens = 1000 } = input;
         
+        // 从用户消息中提取股票代码
+        const userMessage = messages.find(m => m.role === 'user')?.content;
+        let stockDataContext = '';
+        
+        if (typeof userMessage === 'string') {
+          // 提取股票代码（如 AAPL, TSLA, BRK.B 等）
+          const stockCodeRegex = /\b([A-Z]{1,5}(?:\.[A-Z])?(?:\s*,\s*[A-Z]{1,5}(?:\.[A-Z])?)*)/g;
+          const matches = userMessage.match(stockCodeRegex);
+          
+          if (matches && matches.length > 0) {
+            try {
+              const { queryKlineData, queryTechnicalIndicators } = await import('./siteDataQuery');
+              const stockCodes = new Set<string>();
+              
+              // 提取唯一的股票代码
+              matches.forEach(match => {
+                match.split(/[,\s]+/).forEach(code => {
+                  if (code.match(/^[A-Z]{1,5}(?:\.[A-Z])?$/)) {
+                    stockCodes.add(code);
+                  }
+                });
+              });
+              
+              // 查询每个股票的数据
+              const dataPromises = Array.from(stockCodes).map(async (code) => {
+                try {
+                  const kline = await queryKlineData(code, '1d');
+                  const indicators = await queryTechnicalIndicators(code, '1d');
+                  
+                  if (kline && kline.length > 0) {
+                    const latest = kline[kline.length - 1];
+                    return `${code}: 最新价 ${latest.close}, 涨跌 ${((latest.close - latest.open) / latest.open * 100).toFixed(2)}%` +
+                           (indicators ? `, RSI: ${indicators.rsi?.toFixed(2)}, MA20: ${indicators.ma20?.toFixed(2)}` : '');
+                  }
+                } catch (e) {
+                  console.error(`Failed to query ${code}:`, e);
+                  return null;
+                }
+              });
+              
+              const results = await Promise.all(dataPromises);
+              const validResults = results.filter(r => r !== null);
+              
+              if (validResults.length > 0) {
+                stockDataContext = `\n\n【最新股票数据】\n${validResults.join('\n')}`;
+              }
+            } catch (e) {
+              console.error('Failed to query stock data:', e);
+            }
+          }
+        }
+        
+        // 将股票数据注入到消息中
+        const enhancedMessages = messages.map((msg, idx) => {
+          if (msg.role === 'user' && idx === messages.length - 1 && stockDataContext) {
+            return {
+              ...msg,
+              content: typeof msg.content === 'string' ? msg.content + stockDataContext : msg.content,
+            };
+          }
+          return msg;
+        });
+        
         // 构建请求 URL - 处理已包含完整路径的情况
         let url = baseUrl;
         if (!url.includes('/chat/completions')) {
@@ -326,7 +389,7 @@ export const stockRouter = router({
           url,
           {
             model: model,
-            messages: messages,
+            messages: enhancedMessages,
             temperature: temperature,
             max_tokens: max_tokens,
           },
