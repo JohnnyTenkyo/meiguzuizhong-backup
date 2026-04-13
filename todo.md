@@ -394,3 +394,13 @@
 - [ ] 支持切换对话
 - [ ] 支持删除对话
 - [ ] 集成到 Stock Agent 窗口
+
+
+## 修复 Stock Agent 的三个关键问题
+- [x] 移除 OAuth 登录要求 - 使用 publicProcedure
+- [x] 修复对话窗口滚动问题 - 使用 setTimeout
+- [x] 修复 getConversationsMutation.mutateAsync is not a function - 改为 useQuery
+- [x] 修复 ConversationThread 类型定义 - 支持 Date 和 number
+- [x] 修复 TypeScript 编译错误 - 所有错误已解决
+- [x] 测试所有修复功能 - 10/10 测试通过
+- [x] 创建新的 checkpoint

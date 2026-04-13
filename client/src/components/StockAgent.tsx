@@ -28,8 +28,8 @@ interface StockAgentConfig {
 interface ConversationThread {
   id: number;
   title: string;
-  createdAt: number;
-  updatedAt: number;
+  createdAt: Date | number;
+  updatedAt: Date | number;
 }
 
 interface StockAgentProps {
@@ -62,22 +62,41 @@ export default function StockAgent({ onClose }: StockAgentProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // tRPC 调用
+  // tRPC 调用 - 使用 publicProcedure 以便不需要 OAuth 登录
   const createConversationMutation = trpc.stock.createConversation.useMutation();
-  const getConversationsMutation = trpc.stock.getConversations.useQuery({ agentType: "stock" });
-  const getMessagesMutation = trpc.stock.getMessages.useMutation();
+  const getConversationsQuery = trpc.stock.getConversations.useQuery({ agentType: "stock" });
+  const getMessagesQuery = trpc.stock.getMessages.useQuery({ threadId: currentThreadId || 0 }, { enabled: !!currentThreadId });
   const saveMessageMutation = trpc.stock.saveMessage.useMutation();
   const deleteConversationMutation = trpc.stock.deleteConversation.useMutation();
   const callAIMutation = trpc.stock.callAI.useMutation();
 
   // 加载对话列表
   useEffect(() => {
-    loadConversations();
-  }, []);
+    if (getConversationsQuery.data) {
+      setConversations(getConversationsQuery.data.map(conv => ({
+        ...conv,
+        createdAt: conv.createdAt instanceof Date ? conv.createdAt.getTime() : conv.createdAt,
+        updatedAt: conv.updatedAt instanceof Date ? conv.updatedAt.getTime() : conv.updatedAt,
+      })));
+    }
+  }, [getConversationsQuery.data]);
+
+  // 加载对话消息
+  useEffect(() => {
+    if (getMessagesQuery.data && currentThreadId) {
+      setMessages(getMessagesQuery.data.map((msg: any) => ({
+        role: msg.role,
+        content: msg.content,
+        timestamp: msg.createdAt instanceof Date ? msg.createdAt.getTime() : new Date(msg.createdAt).getTime(),
+      })));
+    }
+  }, [getMessagesQuery.data, currentThreadId]);
 
   // 自动滚动到底部
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    setTimeout(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, 0);
   }, [messages]);
 
   // 监听配置更新
@@ -93,20 +112,13 @@ export default function StockAgent({ onClose }: StockAgentProps) {
     return () => window.removeEventListener('stockAgentConfigUpdated', handleConfigUpdate);
   }, []);
 
-  const loadConversations = async () => {
-    try {
-      const result = await getConversationsMutation.mutateAsync();
-      setConversations(result);
-    } catch (error) {
-      console.error('Failed to load conversations:', error);
-    }
-  };
+  // 已移到 useEffect 中处理
 
   const createNewConversation = async () => {
     try {
       const result = await createConversationMutation.mutateAsync({
         title: `对话 ${new Date().toLocaleString()}`,
-        assistantType: 'stock_agent',
+        agentType: 'stock',
       });
       setCurrentThreadId(result.id);
       setMessages([
@@ -116,24 +128,14 @@ export default function StockAgent({ onClose }: StockAgentProps) {
           timestamp: Date.now(),
         },
       ]);
-      await loadConversations();
+      await getConversationsQuery.refetch?.();
     } catch (error) {
       console.error('Failed to create conversation:', error);
     }
   };
 
-  const switchConversation = async (threadId: number) => {
-    try {
-      setCurrentThreadId(threadId);
-      const result = await getMessagesMutation.mutateAsync({ threadId });
-      setMessages(result.map((msg: any) => ({
-        role: msg.role,
-        content: msg.content,
-        timestamp: msg.createdAt,
-      })));
-    } catch (error) {
-      console.error('Failed to load conversation:', error);
-    }
+  const switchConversation = (threadId: number) => {
+    setCurrentThreadId(threadId);
   };
 
   const deleteConversation = async (threadId: number) => {
@@ -149,7 +151,7 @@ export default function StockAgent({ onClose }: StockAgentProps) {
           },
         ]);
       }
-      await loadConversations();
+      await getConversationsQuery.refetch?.();
     } catch (error) {
       console.error('Failed to delete conversation:', error);
     }
