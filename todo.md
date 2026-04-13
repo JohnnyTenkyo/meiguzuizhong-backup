@@ -404,3 +404,13 @@
 - [x] 修复 TypeScript 编译错误 - 所有错误已解决
 - [x] 测试所有修复功能 - 10/10 测试通过
 - [x] 创建新的 checkpoint
+
+
+## 修复 Stock Agent 对话框 UI 和对话保存问题
+- [x] 仿照 Foci 智能助手的对话框 UI 设计
+- [x] 修复对话框宽度（w-[400px] h-[600px]）
+- [x] 修复对话窗口滚动问题（使用 ScrollArea）
+- [x] 改为 publicProcedure 支持无需登录访问
+- [x] 使用匿名用户 ID 支持对话保存
+- [x] 所有单元测试通过 (10/10)
+- [x] TypeScript 编译无错误

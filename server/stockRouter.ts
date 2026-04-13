@@ -998,25 +998,29 @@ export const stockRouter = router({
     }),
 
   // 对话管理 API
-  createConversation: protectedProcedure
+  createConversation: publicProcedure
     .input(
       z.object({
         title: z.string().min(1, "对话标题不能为空"),
-        agentType: z.enum(["stock", "foci"]).default("stock"),
+        agentType: z.enum(["stock", "foci"]),
       })
     )
-    .mutation(async ({ ctx, input }) => {
-      return createConversationThread(ctx.user.id, input.title, input.agentType);
+    .mutation(async ({ input }) => {
+      // 使用一个一致的匹名用户 ID（不需要登录）
+      const anonUserId = 1;
+      return createConversationThread(anonUserId, input.title, input.agentType);
     }),
 
-  getConversations: protectedProcedure
+  getConversations: publicProcedure
     .input(
       z.object({
         agentType: z.enum(["stock", "foci"]).optional(),
       })
     )
-    .query(async ({ ctx, input }) => {
-      return getUserConversationThreads(ctx.user.id, input.agentType);
+    .query(async ({ input }) => {
+      // 使用一个一致的匹名用户 ID（不需要登录）
+      const anonUserId = 1;
+      return getUserConversationThreads(anonUserId, input.agentType);
     }),
 
   getConversation: protectedProcedure
@@ -1025,12 +1029,12 @@ export const stockRouter = router({
       return getConversationThread(input.threadId);
     }),
 
-  getMessages: protectedProcedure
+  getMessages: publicProcedure
     .input(
       z.object({
         threadId: z.number(),
-        limit: z.number().default(20),
-        offset: z.number().default(0),
+        limit: z.number().optional(),
+        offset: z.number().optional(),
       })
     )
     .query(async ({ input }) => {
@@ -1048,7 +1052,7 @@ export const stockRouter = router({
       return getLatestConversationMessages(input.threadId, input.count);
     }),
 
-  saveMessage: protectedProcedure
+  saveMessage: publicProcedure
     .input(
       z.object({
         threadId: z.number(),
@@ -1083,11 +1087,14 @@ export const stockRouter = router({
       return archiveConversationThread(input.threadId);
     }),
 
-  deleteConversation: protectedProcedure
-    .input(z.object({ threadId: z.number() }))
+  deleteConversation: publicProcedure
+    .input(
+      z.object({
+        threadId: z.number(),
+      })
+    )
     .mutation(async ({ input }) => {
-      await deleteConversationThread(input.threadId);
-      return { success: true };
+      return deleteConversationThread(input.threadId);
     }),
 
   getConversationStats: protectedProcedure
