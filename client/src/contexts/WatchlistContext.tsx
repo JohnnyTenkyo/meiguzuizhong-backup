@@ -20,6 +20,9 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
   const [localWatchlist, setLocalWatchlist] = useState<string[]>([]);
   const [migrated, setMigrated] = useState(false);
 
+  // 在组件函数体内调用 useUtils Hook
+  const utils = trpc.useUtils();
+
   // 从 localStorage 获取 localUserId
   useEffect(() => {
     const stored = localStorage.getItem('localUserId');
@@ -40,7 +43,7 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
   const addMutation = trpc.watchlist.addToWatchlist.useMutation({
     onSuccess: () => {
       if (localUserId) {
-        void trpc.useUtils().watchlist.getWatchlist.invalidate({ localUserId });
+        void utils.watchlist.getWatchlist.invalidate({ localUserId });
       }
     },
   });
@@ -49,7 +52,7 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
   const removeMutation = trpc.watchlist.removeFromWatchlist.useMutation({
     onSuccess: () => {
       if (localUserId) {
-        void trpc.useUtils().watchlist.getWatchlist.invalidate({ localUserId });
+        void utils.watchlist.getWatchlist.invalidate({ localUserId });
       }
     },
   });
@@ -58,7 +61,7 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
   const toggleMutation = trpc.watchlist.toggleWatchlist.useMutation({
     onSuccess: () => {
       if (localUserId) {
-        void trpc.useUtils().watchlist.getWatchlist.invalidate({ localUserId });
+        void utils.watchlist.getWatchlist.invalidate({ localUserId });
       }
     },
   });
@@ -72,15 +75,19 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
       setMigrated(true);
       // 重新获取自选股列表
       if (localUserId) {
-        void trpc.useUtils().watchlist.getWatchlist.invalidate({ localUserId });
+        void utils.watchlist.getWatchlist.invalidate({ localUserId });
       }
     },
   });
 
   // 初始化: 从数据库加载自选股
   useEffect(() => {
-    if (userWatchlist) {
-      setWatchlist(userWatchlist);
+    if (userWatchlist && userWatchlist.length > 0) {
+      const symbols = userWatchlist.map((item: any) => typeof item === 'string' ? item : item.symbol);
+      setWatchlist(symbols);
+      setIsLoading(false);
+    } else if (userWatchlist && userWatchlist.length === 0) {
+      setWatchlist([]);
       setIsLoading(false);
     }
   }, [userWatchlist]);
@@ -104,7 +111,7 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
         setIsLoading(false);
       }
     }
-  }, [localUserId, watchlistLoading, migrated]);
+  }, [localUserId, watchlistLoading, migrated, migrateMutation]);
 
   const addToWatchlist = (symbol: string) => {
     console.log('[Watchlist] addToWatchlist called:', { symbol, localUserId });
@@ -141,6 +148,8 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+
+
   return (
     <WatchlistContext.Provider
       value={{
@@ -149,7 +158,7 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
         removeFromWatchlist,
         isInWatchlist,
         toggleStock,
-        isLoading: isLoading || watchlistLoading,
+        isLoading: isLoading || watchlistLoading || addMutation.isPending || removeMutation.isPending || toggleMutation.isPending,
       }}
     >
       {children}

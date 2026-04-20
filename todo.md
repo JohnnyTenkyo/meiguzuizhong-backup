@@ -432,3 +432,11 @@
 - [x] 创建 CEO 映射表 - 100+ 股票的 CEO 信息
 - [x] 修改 watchlistRouter 以自动关注 CEO
 - [x] 测试 CEO 映射功能 - 22/22 测试通过
+
+
+## 修复 Home 页面的 Invalid hook call 和 Failed to fetch 错误
+- [x] 排查 Invalid hook call 错误 - 在 onSuccess 回调中调用了 trpc.useUtils()
+- [x] 修复 Invalid hook call 错误 - 将 useUtils() 移到组件函数体内
+- [x] 修复 Failed to fetch 错误 - 由 Invalid hook call 引起
+- [x] 添加错误处理和本地状态回滚
+- [x] 测试修复 - 所有错误已解决
