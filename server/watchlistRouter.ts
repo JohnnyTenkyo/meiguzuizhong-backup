@@ -1,8 +1,9 @@
 import { z } from "zod";
 import { publicProcedure, router } from "./_core/trpc";
 import { getDb } from "./db";
-import { watchlist, InsertWatchlist } from "../drizzle/schema";
+import { watchlist, InsertWatchlist, trackedPeople } from "../drizzle/schema";
 import { eq, and } from "drizzle-orm";
+import { getCEOInfo } from "./ceoMapping";
 
 export const watchlistRouter = router({
   // 获取用户的自选股列表
@@ -60,6 +61,39 @@ export const watchlistRouter = router({
           localUserId: input.localUserId,
           symbol: input.symbol,
         } as InsertWatchlist);
+
+        // 自动关注 CEO
+        try {
+          const ceoInfo = getCEOInfo(input.symbol);
+          if (ceoInfo && ceoInfo.twitterHandle) {
+            // 检查是否已关注
+              const existingTrack = await db
+                .select()
+                .from(trackedPeople)
+                .where(
+                  and(
+                    eq(trackedPeople.userId, input.localUserId),
+                    eq(trackedPeople.twitterHandle, ceoInfo.twitterHandle)
+                  )
+                )
+                .limit(1);
+
+              // 如果未关注，则添加
+              if (existingTrack.length === 0) {
+                await db.insert(trackedPeople).values({
+                  userId: input.localUserId,
+                  twitterHandle: ceoInfo.twitterHandle,
+                  name: ceoInfo.name,
+                  nameZh: ceoInfo.nameZh,
+                  category: '科技',
+                });
+              console.log(`[Watchlist] Auto-followed CEO ${ceoInfo.name} for ${input.symbol}`);
+            }
+          }
+        } catch (error) {
+          console.error(`[Watchlist] Failed to auto-follow CEO for ${input.symbol}:`, error);
+          // 不影响主流程
+        }
 
         return { success: true, message: "Added to watchlist" };
       } catch (error) {
@@ -133,6 +167,40 @@ export const watchlistRouter = router({
             localUserId: input.localUserId,
             symbol: input.symbol,
           } as InsertWatchlist);
+
+          // 自动关注 CEO
+          try {
+            const ceoInfo = getCEOInfo(input.symbol);
+            if (ceoInfo && ceoInfo.twitterHandle) {
+              // 检查是否已关注
+              const existingTrack = await db
+                .select()
+                .from(trackedPeople)
+                .where(
+                  and(
+                    eq(trackedPeople.userId, input.localUserId),
+                    eq(trackedPeople.twitterHandle, ceoInfo.twitterHandle)
+                  )
+                )
+                .limit(1);
+
+              // 如果未关注，则添加
+              if (existingTrack.length === 0) {
+                await db.insert(trackedPeople).values({
+                  userId: input.localUserId,
+                  twitterHandle: ceoInfo.twitterHandle,
+                  name: ceoInfo.name,
+                  nameZh: ceoInfo.nameZh,
+                  category: '科技',
+                });
+                console.log(`[Watchlist] Auto-followed CEO ${ceoInfo.name} for ${input.symbol}`);
+              }
+            }
+          } catch (error) {
+            console.error(`[Watchlist] Failed to auto-follow CEO for ${input.symbol}:`, error);
+            // 不影响主流程
+          }
+
           return { success: true, added: true };
         }
       } catch (error) {
