@@ -309,7 +309,7 @@ export default function Home() {
 
         {/* Automated Strategy Backtest Platform entry */}
         <a
-          href="https://tzlh3.manus.space"
+          href="https://tzlh7.manus.space/"
           target="_blank"
           rel="noopener noreferrer"
           className="rounded-lg border border-rose-500/30 bg-rose-500/5 px-4 py-3 flex items-center justify-between cursor-pointer hover:bg-rose-500/10 transition-colors"
