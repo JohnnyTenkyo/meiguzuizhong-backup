@@ -292,7 +292,7 @@ export default function Home() {
 
         {/* Quantitative Backtest Platform entry */}
         <a
-          href="https://mglh.manus.space"
+          href="https://mglhscan-czxnfpjg.manus.space"
           target="_blank"
           rel="noopener noreferrer"
           className="rounded-lg border border-purple-500/30 bg-purple-500/5 px-4 py-3 flex items-center justify-between cursor-pointer hover:bg-purple-500/10 transition-colors"
