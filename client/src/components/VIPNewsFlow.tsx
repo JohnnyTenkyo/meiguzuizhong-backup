@@ -837,9 +837,9 @@ export default function VIPNewsFlow({ watchlistTickers = [] }: { watchlistTicker
                     暂无相关内容
                   </div>
                 ) : (
-                  currentContent.map((item, idx) => (
+                  currentContent.map((item) => (
                     <a
-                      key={idx}
+                      key={item.link || `${item.title}-${item.pubDate}`}
                       href={item.link}
                       target="_blank"
                       rel="noopener noreferrer"

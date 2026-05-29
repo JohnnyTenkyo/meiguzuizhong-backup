@@ -457,6 +457,11 @@ export const newsflowRouter = router({
         // 直接从 Twitter API 获取推文
         const tweets = await getTwitterTweetsByUsername(input.twitterHandle, input.limit);
         
+        // 检查是否有效数据
+        if (!Array.isArray(tweets) || tweets.length === 0) {
+          return [];
+        }
+        
         // 转换为统一的 NewsItem 格式
         const items = tweets.map((tweet) => ({
           title: tweet.text,
@@ -504,6 +509,11 @@ export const newsflowRouter = router({
 
         // 获取所有推文
         const tweets = await getTwitterTweetsByUsername(input.twitterHandle, input.limit * 2);
+        
+        // 检查是否有效数据
+        if (!Array.isArray(tweets) || tweets.length === 0) {
+          return [];
+        }
         
         // 过滤出原创推文（非转发且非评论）
         const originalTweets = tweets.filter(tweet => !tweet.is_retweet && !tweet.is_reply);

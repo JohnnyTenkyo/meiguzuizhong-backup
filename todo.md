@@ -446,3 +446,13 @@
 - [x] 修改首页"全自动策略回测"按钮链接为 https://tzlh7.manus.space/
 - [x] 运行所有测试验证 - 开发服务器正常运行
 - [x] 保存最终检查点
+
+
+## 修复任务信息流推文无法显示和自动删除已退市股票
+- [x] 修复 React key 重复问题 - 已修复，改为使用 link 或 title+pubDate
+- [x] 修复推文加载错误 - 添加了 null 检查
+- [x] 修复 getTwitterTweetsByUsername 的过滤逻辑 - 不再过滤转推和回复
+- [x] 实现自动删除已退市或改名股票的功能 - removeInvalidSymbols tRPC 过程
+- [x] 在 Home 页面中添加错误处理 - 记录加载失败的股票
+- [x] 测试所有修复 - 开发服务器正常运行，TypeScript 编译无错误
+- [x] 保存最终检查点

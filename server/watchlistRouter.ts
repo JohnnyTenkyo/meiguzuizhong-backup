@@ -209,6 +209,36 @@ export const watchlistRouter = router({
       }
     }),
 
+  // 自动删除无效股票
+  removeInvalidSymbols: publicProcedure
+    .input(z.object({ localUserId: z.number(), invalidSymbols: z.array(z.string()) }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db || input.invalidSymbols.length === 0) {
+        return { success: true, removed: 0 };
+      }
+
+      try {
+        // 删除所有无效的股票
+        for (const symbol of input.invalidSymbols) {
+          await db
+            .delete(watchlist)
+            .where(
+              and(
+                eq(watchlist.localUserId, input.localUserId),
+                eq(watchlist.symbol, symbol)
+              )
+            );
+          console.log(`[Watchlist] Removed invalid symbol: ${symbol}`);
+        }
+
+        return { success: true, removed: input.invalidSymbols.length };
+      } catch (error) {
+        console.error("[Watchlist] Failed to remove invalid symbols:", error);
+        return { success: false, removed: 0 };
+      }
+    }),
+
   // 清空自选股
   clearWatchlist: publicProcedure
     .input(z.object({ localUserId: z.number() }))

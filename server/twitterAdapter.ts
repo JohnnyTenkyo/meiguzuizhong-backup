@@ -146,13 +146,9 @@ export async function getTwitterTweetsByUsername(
       const result = tweet.raw.result as any;
       const legacy = result.legacy || {};
       
-      // 过滤转推和回复（只保留原创推文）
+      // 检查是否为转推和回复（但不过滤，让调用方决定）
       const isRetweet = legacy.retweetedStatusResult !== undefined;
       const isReply = legacy.inReplyToStatusIdStr !== undefined;
-      
-      if (isRetweet || isReply) {
-        continue;
-      }
       
       const post: TwitterTweet = {
         id: result.restId || tweet.id || '',

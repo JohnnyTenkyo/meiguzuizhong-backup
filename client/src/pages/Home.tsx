@@ -86,6 +86,8 @@ export default function Home() {
         results.forEach((result, idx) => {
           if (result.status === 'fulfilled') {
             newQuotes[batch[idx]] = result.value;
+          } else {
+            console.warn(`Failed to load quote for ${batch[idx]}`);
           }
         });
         setQuotes(prev => ({ ...prev, ...newQuotes }));
