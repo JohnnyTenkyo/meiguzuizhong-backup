@@ -367,21 +367,24 @@ export default function Home() {
             </div>
           ) : topGainers && topGainers.length > 0 ? (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-              {topGainers.slice(0, 10).map((stock: any) => (
-                <div
-                  key={stock.symbol}
-                  onClick={() => handleStockClick(stock.symbol)}
-                  className="rounded-lg border border-border bg-card hover:bg-accent/50 cursor-pointer transition-colors p-3 flex flex-col gap-2"
-                >
-                  <span className="font-bold text-base tracking-wide">{stock.symbol}</span>
-                  <div className="flex flex-col gap-1">
-                    <span className="data-mono text-sm font-medium">${stock.price.toFixed(2)}</span>
-                    <span className="data-mono text-xs px-2 py-1 rounded font-medium text-red-500 bg-red-500/10 text-center">
-                      +{(stock.changePercent ?? 0).toFixed(2)}%
-                    </span>
+              {Array.from(new Set(topGainers.map((s: any) => s.symbol))).slice(0, 10).map((symbol: any) => {
+                const stock = topGainers.find((s: any) => s.symbol === symbol);
+                return stock ? (
+                  <div
+                    key={stock.symbol}
+                    onClick={() => handleStockClick(stock.symbol)}
+                    className="rounded-lg border border-border bg-card hover:bg-accent/50 cursor-pointer transition-colors p-3 flex flex-col gap-2"
+                  >
+                    <span className="font-bold text-base tracking-wide">{stock.symbol}</span>
+                    <div className="flex flex-col gap-1">
+                      <span className="data-mono text-sm font-medium">${stock.price.toFixed(2)}</span>
+                      <span className="data-mono text-xs px-2 py-1 rounded font-medium text-red-500 bg-red-500/10 text-center">
+                        +{(stock.changePercent ?? 0).toFixed(2)}%
+                      </span>
+                    </div>
                   </div>
-                </div>
-              ))}
+                ) : null;
+              })}
             </div>
           ) : (
             <p className="text-sm text-muted-foreground">暂无数据</p>
@@ -407,7 +410,7 @@ export default function Home() {
             </div>
           ) : recommendedStocks && recommendedStocks.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-              {recommendedStocks.map((stock: any) => {
+              {Array.from(new Map(recommendedStocks.map((s: any) => [s.symbol, s])).values()).map((stock: any) => {
                 const isStrongRecommendation = stock.totalScore && stock.totalScore > 80;
                 return (
                   <div
