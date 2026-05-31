@@ -35,7 +35,7 @@ interface NewsItem {
   };
 }
 
-type ContentTab = "original" | "truthsocial" | "news";
+type ContentTab = "original" | "retweets" | "truthsocial" | "news";
 
 // ============================================================
 // 辅助函数
@@ -253,6 +253,9 @@ export default function VIPNewsFlow({ watchlistTickers = [] }: { watchlistTicker
     switch (contentTab) {
       case "original":
         return originalTweets;
+
+      case "retweets":
+        return retweetsReplies;
 
       case "truthsocial":
         return truthSocialPosts;
@@ -771,6 +774,22 @@ export default function VIPNewsFlow({ watchlistTickers = [] }: { watchlistTicker
                         }}
                       >
                         💬 原创推文 {originalTweets.length > 0 && `(${originalTweets.length})`}
+                      </button>
+                      <button
+                        onClick={() => setContentTab("retweets")}
+                        style={{
+                          padding: "6px 14px",
+                          borderRadius: 8,
+                          border: "none",
+                          fontSize: 12,
+                          fontWeight: 600,
+                          cursor: "pointer",
+                          background: contentTab === "retweets" ? "#8b5cf6" : "rgba(30,41,59,0.5)",
+                          color: contentTab === "retweets" ? "#fff" : "#94a3b8",
+                          transition: "all 0.2s",
+                        }}
+                      >
+                        🔄 转发和回复 {retweetsReplies.length > 0 && `(${retweetsReplies.length})`}
                       </button>
                     </>
                   )}

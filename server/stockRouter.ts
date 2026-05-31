@@ -768,6 +768,10 @@ export const stockRouter = router({
         
         for (const symbol of US_STOCKS) {
           try {
+            // Skip invalid symbols
+            if (!symbol || symbol.length < 1 || symbol.length > 5) continue;
+            if (!/^[A-Z0-9.\-]+$/.test(symbol)) continue; // Only alphanumeric, dots, hyphens
+            
             const quoteKey = `quote:${symbol}`;
             let quote = getCached<any>(quoteKey);
             
@@ -782,21 +786,31 @@ export const stockRouter = router({
               if (!result) continue;
 
               const meta = result.meta;
+              
+              // Validate required fields
+              if (meta.regularMarketPrice === null || meta.regularMarketPrice === undefined) continue;
+              if (meta.chartPreviousClose === null || meta.chartPreviousClose === undefined) continue;
+              if (!Number.isFinite(meta.regularMarketPrice) || !Number.isFinite(meta.chartPreviousClose)) continue;
+              if (meta.chartPreviousClose === 0) continue; // Avoid division by zero
+              
               quote = {
-                price: meta.regularMarketPrice || 0,
+                price: meta.regularMarketPrice,
                 changePercent: ((meta.regularMarketPrice - meta.chartPreviousClose) / meta.chartPreviousClose) * 100,
               };
               
               setCache(quoteKey, quote, 60000); // 1 minute cache
             }
 
-            if (quote.price > 0) {
-              quotes.push({
-                symbol,
-                price: quote.price,
-                changePercent: quote.changePercent,
-              });
-            }
+            // Additional validation for cached quotes
+            if (!quote || quote.price === null || quote.price === undefined) continue;
+            if (!Number.isFinite(quote.price) || !Number.isFinite(quote.changePercent)) continue;
+            if (quote.price <= 0) continue;
+            
+            quotes.push({
+              symbol,
+              price: quote.price,
+              changePercent: quote.changePercent,
+            });
           } catch (err) {
             // Skip failed quotes
           }

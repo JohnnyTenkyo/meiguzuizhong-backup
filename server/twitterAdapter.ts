@@ -123,10 +123,16 @@ export async function getTwitterTweetsByUsername(
     }
     
     // 获取用户推文
-    const tweetsResponse = await client.getTweetApi().getUserTweets({
-      userId,
-      count,
-    });
+    let tweetsResponse;
+    try {
+      tweetsResponse = await client.getTweetApi().getUserTweets({
+        userId,
+        count,
+      });
+    } catch (apiError: any) {
+      console.error(`Twitter API error for @${username}:`, apiError?.message || apiError);
+      return [];
+    }
     
     // tweetsResponse.data 是一个对象，包含 { raw, cursor, data } 字段
     // 真正的推文数据在 tweetsResponse.data.data 中
@@ -138,13 +144,14 @@ export async function getTwitterTweetsByUsername(
     const posts: TwitterTweet[] = [];
     
     for (const tweet of tweets) {
-      // 检查是否有 raw 数据
-      if (!tweet.raw?.result) {
-        continue;
-      }
-      
-      const result = tweet.raw.result as any;
-      const legacy = result.legacy || {};
+      try {
+        // 检查是否有 raw 数据
+        if (!tweet.raw?.result) {
+          continue;
+        }
+        
+        const result = tweet.raw.result as any;
+        const legacy = result.legacy || {};
       
       // 检查是否为转推和回复（但不过滤，让调用方决定）
       const isRetweet = legacy.retweetedStatusResult !== undefined;
@@ -170,11 +177,15 @@ export async function getTwitterTweetsByUsername(
         }));
       }
       
-      posts.push(post);
-      
-      // 限制返回数量
-      if (posts.length >= count) {
-        break;
+        posts.push(post);
+        
+        // 限制返回数量
+        if (posts.length >= count) {
+          break;
+        }
+      } catch (tweetError: any) {
+        console.warn(`Error processing tweet for @${username}:`, tweetError?.message || tweetError);
+        continue;
       }
     }
     
