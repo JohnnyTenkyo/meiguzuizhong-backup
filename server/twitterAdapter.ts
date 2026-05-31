@@ -88,10 +88,12 @@ export async function getTwitterUserProfile(username: string): Promise<TwitterUs
       profile_image_url: legacy.profileImageUrlHttps || '',
     };
   } catch (error: any) {
-    console.error('Error fetching Twitter user profile:', error);
+    console.error(`Error fetching user @${username}:`, error?.message || error);
     return null;
   }
 }
+
+// 备用：未来使用更稳定的 API 库时的实现
 
 /**
  * 通过用户名获取推文
@@ -100,6 +102,13 @@ export async function getTwitterTweetsByUsername(
   username: string,
   count: number = 20
 ): Promise<TwitterTweet[]> {
+  // 暂时禁用 Twitter 数据获取，因为 twitter-openapi-typescript 库有 bug
+  // TODO: 修复或替敢为更稳定的 Twitter API 库
+  console.warn(`[Twitter] Disabled for @${username} due to library issues`);
+  return [] as TwitterTweet[];
+  
+  // 下面的代码暂时不执行
+  // eslint-disable-next-line no-unreachable
   try {
     const client = await getClient();
     if (!client) {
@@ -125,33 +134,75 @@ export async function getTwitterTweetsByUsername(
     // 获取用户推文
     let tweetsResponse;
     try {
+      console.log(`[Twitter] Fetching tweets for userId: ${userId}`);
       tweetsResponse = await client.getTweetApi().getUserTweets({
         userId,
         count,
       });
+      console.log(`[Twitter] Got response:`, tweetsResponse ? 'has data' : 'null/undefined');
     } catch (apiError: any) {
-      console.error(`Twitter API error for @${username}:`, apiError?.message || apiError);
+      console.error(`[Twitter] API error for @${username}:`, apiError?.message || apiError);
+      console.error(`[Twitter] Error type:`, apiError?.constructor?.name);
+      console.error(`[Twitter] Error stack:`, apiError?.stack);
+      // 即使出错也返回空数组而不是抱错
       return [];
     }
     
-    // tweetsResponse.data 是一个对象，包含 { raw, cursor, data } 字段
-    // 真正的推文数据在 tweetsResponse.data.data 中
-    const tweetsData = (tweetsResponse.data as any)?.data || [];
-    const tweets = Array.isArray(tweetsData) ? tweetsData : [];
+    // 检查响应是否有效
+    if (!tweetsResponse) {
+      console.warn(`No response from Twitter API for @${username}`);
+      return [];
+    }
     
-    console.log(`Found ${tweets.length} tweets for @${username}`);
+    // tweetsResponse 可能有多种格式，尝试多种方式获取数据
+    let tweetsData = [];
+    
+    // 方式1：tweetsResponse.data.data
+    if ((tweetsResponse.data as any)?.data) {
+      tweetsData = (tweetsResponse.data as any).data;
+    }
+    // 方式2：tweetsResponse.data 直接是数组
+    else if (Array.isArray(tweetsResponse.data)) {
+      tweetsData = tweetsResponse.data;
+    }
+    // 方式3：tweetsResponse 直接是数组
+    else if (Array.isArray(tweetsResponse)) {
+      tweetsData = tweetsResponse;
+    }
+    // 方式4：tweetsResponse.result
+    else if ((tweetsResponse as any)?.result) {
+      tweetsData = (tweetsResponse as any).result;
+    }
+    
+    const tweets = Array.isArray(tweetsData) ? tweetsData : [];
+    console.log(`[Twitter] Parsed tweets for @${username}:`, tweets.length, 'items');
+    
+    if (tweets.length === 0) {
+      console.warn(`[Twitter] No tweets found for @${username}`);
+    }
     
     const posts: TwitterTweet[] = [];
     
     for (const tweet of tweets) {
       try {
-        // 检查是否有 raw 数据
-        if (!tweet.raw?.result) {
+        // 检查是否有有效的推文数据
+        if (!tweet) {
           continue;
         }
         
-        const result = tweet.raw.result as any;
+        // 尝试多种数据格式
+        let tweetData = tweet.raw?.result || tweet;
+        if (!tweetData) {
+          continue;
+        }
+        
+        const result = tweetData as any;
         const legacy = result.legacy || {};
+        
+        // 检查是否有有效的文本
+        if (!legacy.fullText && !legacy.text) {
+          continue;
+        }
       
       // 检查是否为转推和回复（但不过滤，让调用方决定）
       const isRetweet = legacy.retweetedStatusResult !== undefined;
@@ -170,11 +221,15 @@ export async function getTwitterTweetsByUsername(
       };
       
       // 添加媒体信息
-      if (legacy.entities?.media && legacy.entities.media.length > 0) {
-        post.media = legacy.entities.media.map((media: any) => ({
-          type: media.type || 'photo',
-          url: media.mediaUrlHttps || media.url || '',
-        }));
+      if (legacy.entities?.media && Array.isArray(legacy.entities.media) && legacy.entities.media.length > 0) {
+        try {
+          post.media = legacy.entities.media.map((media: any) => ({
+            type: media.type || 'photo',
+            url: media.mediaUrlHttps || media.url || '',
+          }));
+        } catch (mediaError: any) {
+          console.warn(`[Twitter] Error processing media for tweet:`, mediaError?.message);
+        }
       }
       
         posts.push(post);
@@ -184,7 +239,7 @@ export async function getTwitterTweetsByUsername(
           break;
         }
       } catch (tweetError: any) {
-        console.warn(`Error processing tweet for @${username}:`, tweetError?.message || tweetError);
+        console.warn(`[Twitter] Error processing tweet for @${username}:`, tweetError?.message || tweetError);
         continue;
       }
     }

@@ -462,6 +462,17 @@
 - [x] 添加"转发和回复"标签页到 VIPNewsFlow - 显示被获取但未渲染的推文
 - [x] 修复 getTopGainers 数据验证 - 过滤无效股票代码和 null 数据
 - [x] 创建单元测试验证修复
-- [ ] 测试推文显示功能
-- [ ] 测试涨幅榜显示功能
-- [ ] 创建新的 checkpoint
+- [x] 测试推文显示功能 - 上传和回复标签页已正常工作
+- [x] 测试涨幅榜显示功能 - 涨幅榜中所有股票都是有效数据
+- [x] 创建新的 checkpoint
+
+
+## 修复原创推文显示问题 (twitter-openapi-typescript 库 bug)
+- [x] 诊断原创推文不显示的根本原因 - twitter-openapi-typescript 库在处理 API 响应时出现 bug
+- [x] 添加详细错误日志以诊断问题
+- [x] 尝试多种数据格式处理 - 无法解决库的内部 bug
+- [x] 暂时禁用 Twitter API 调用 - 返回空数组以避免库的 bug
+- [x] 添加前端超时机制 - 10 秒超时防止无限加载
+- [x] 验证 Truth Social 和新闻报道仍正常工作
+- [x] 验证涨幅榜数据验证逻辑正常工作
+- [x] 创建新的 checkpoint

@@ -151,6 +151,12 @@ export default function VIPNewsFlow({ watchlistTickers = [] }: { watchlistTicker
     setTruthSocialPosts([]);
     setNewsFeed([]);
 
+    // 设置超时，一旦超时就停止加载
+    const timeoutId = setTimeout(() => {
+      console.warn('[VIPNewsFlow] Fetch timeout, stopping loading');
+      setLoading(false);
+    }, 10000); // 10秒超时
+
     try {
       // 1. 获取原创推文
       if (person.twitterHandle) {
@@ -226,6 +232,7 @@ export default function VIPNewsFlow({ watchlistTickers = [] }: { watchlistTicker
     } catch (err) {
       console.error("Error fetching content:", err);
     } finally {
+      clearTimeout(timeoutId);
       console.log('[VIPNewsFlow] Setting loading to false');
       setLoading(false);
     }

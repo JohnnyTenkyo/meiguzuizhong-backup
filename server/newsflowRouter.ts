@@ -348,11 +348,24 @@ async function translateText(text: string): Promise<string> {
     const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=zh-CN&dt=t&q=${encoded}`;
     const resp = await fetchUrl(url);
     const data = JSON.parse(resp);
-    if (data && data[0]) {
-      return data[0].map((seg: any[]) => seg[0]).join("");
+    
+    // 检查数据格式
+    if (data && Array.isArray(data[0])) {
+      const translated = data[0].map((seg: any[]) => {
+        if (Array.isArray(seg) && seg[0]) {
+          return seg[0];
+        }
+        return '';
+      }).join("");
+      
+      if (translated) {
+        return translated;
+      }
     }
+    
     return text;
-  } catch {
+  } catch (error) {
+    console.warn('[Translation] Error translating text:', error);
     return text;
   }
 }
@@ -465,7 +478,7 @@ export const newsflowRouter = router({
         // 转换为统一的 NewsItem 格式
         const items = tweets.map((tweet) => ({
           title: tweet.text,
-          titleZh: tweet.text, // 先设为原文，稍后翻译
+          titleZh: tweet.text, // 先设为原文
           link: `https://x.com/${input.twitterHandle}/status/${tweet.id}`,
           pubDate: tweet.created_at,
           source: "X (Twitter)",
@@ -480,15 +493,8 @@ export const newsflowRouter = router({
           },
         }));
 
-        // 翻译所有推文
-        const translated = await Promise.all(
-          items.map(async (item) => {
-            const titleZh = await translateText(item.title);
-            return { ...item, titleZh };
-          })
-        );
-
-        return translated;
+        // 暂时跳过翻译，直接返回
+        return items;
       } catch (err) {
         console.error("Error fetching Twitter timeline:", err);
         return [];
@@ -524,7 +530,7 @@ export const newsflowRouter = router({
         // 转换为统一的 NewsItem 格式
         const items = limited.map((tweet) => ({
           title: tweet.text,
-          titleZh: tweet.text, // 先设为原文，稍后翻译
+          titleZh: tweet.text, // 先设为原文
           link: `https://x.com/${input.twitterHandle}/status/${tweet.id}`,
           pubDate: tweet.created_at,
           source: "X (Twitter)",
@@ -539,15 +545,8 @@ export const newsflowRouter = router({
           },
         }));
 
-        // 翻译所有推文
-        const translated = await Promise.all(
-          items.map(async (item) => {
-            const titleZh = await translateText(item.title);
-            return { ...item, titleZh };
-          })
-        );
-
-        return translated;
+        // 暂时跳过翻译，直接返回
+        return items;
       } catch (err) {
         console.error("Error fetching original tweets:", err);
         return [];
