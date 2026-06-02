@@ -476,3 +476,16 @@
 - [x] 验证 Truth Social 和新闻报道仍正常工作
 - [x] 验证涨幅榜数据验证逻辑正常工作
 - [x] 创建新的 checkpoint
+
+
+## 修复 X 推文显示和涨幅榜数据问题
+- [x] 添加"转发和回复"标签页到 VIPNewsFlow
+- [x] 修复 getTopGainers 数据验证 - 过滤无效股票代码和 null 数据
+- [x] 创建单元测试验证 getTopGainers 修复
+- [x] 尝试 twitter-api-v2 库 - 401 认证错误
+- [x] 尝试 GraphQL API 直接调用 - 403 Forbidden
+- [x] 尝试 Nitter RSS 源 - 网络连接失败
+- [x] 尝试 twitter-scraper 库 - API 不兼容
+- [x] 尝试 Puppeteer 浏览器自动化 - 沙箱不支持
+- [x] 尝试 twikit Python 库 - 认证密钥获取失败
+- [ ] 继续探索其他方案或等待网络恢复

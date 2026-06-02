@@ -1,14 +1,30 @@
 /**
- * Twitter Adapter - 使用 twitter-openapi-typescript（完全免费）
- * 需要配置 TWITTER_AUTH_TOKEN 和 TWITTER_CT0 环境变量
+ * Twitter Adapter - 混合方案
+ * 1. 首先尝试使用 GraphQL API（最可靠）
+ * 2. 如果失败，尝试原来的 twitter-openapi-typescript 库
+ * 3. 如果都失败，回退到 RSS 源方案
+ * 4. 如果都失败，返回空数组
  */
 import { TwitterOpenApi } from 'twitter-openapi-typescript';
+import { getTwitterTweetsByUsernameRss } from './twitterRssAdapter';
+import { getTwitterTweetsByUsernameGraphql } from './twitterGraphqlAdapter';
+import { getTwitterTweetsByUsernameDirectAPI, getTwitterTweetsByUsernameNitter } from './twitterDirectAdapter';
+import { getTwitterTweetsByUsernamePython } from './twitterPythonAdapter';
 
 // 全局 API 客户端实例
 let apiClient: any | null = null;
+let initError: Error | null = null;
 
 async function getClient() {
-  if (!apiClient) {
+  if (apiClient) {
+    return apiClient;
+  }
+  
+  if (initError) {
+    throw initError;
+  }
+  
+  try {
     // 从环境变量获取 tokens
     const authToken = process.env.TWITTER_AUTH_TOKEN;
     const ct0 = process.env.TWITTER_CT0;
@@ -25,9 +41,14 @@ async function getClient() {
       auth_token: authToken,
       ct0: ct0,
     });
+    
+    console.log('[Twitter] Successfully initialized API client');
+    return apiClient;
+  } catch (error: any) {
+    initError = error;
+    console.error('[Twitter] Failed to initialize API client:', error?.message);
+    throw error;
   }
-  
-  return apiClient;
 }
 
 interface TwitterUser {
@@ -61,6 +82,8 @@ interface TwitterTweet {
  */
 export async function getTwitterUserProfile(username: string): Promise<TwitterUser | null> {
   try {
+    console.log(`[Twitter] Fetching user profile for @${username}`);
+    
     const client = await getClient();
     if (!client) {
       throw new Error('Failed to initialize Twitter client');
@@ -88,165 +111,127 @@ export async function getTwitterUserProfile(username: string): Promise<TwitterUs
       profile_image_url: legacy.profileImageUrlHttps || '',
     };
   } catch (error: any) {
-    console.error(`Error fetching user @${username}:`, error?.message || error);
+    console.error(`[Twitter] Error fetching user profile for @${username}:`, error?.message);
     return null;
   }
 }
 
-// 备用：未来使用更稳定的 API 库时的实现
-
 /**
  * 通过用户名获取推文
+ * 混合方案：首先尝试 GraphQL，然后尝试 API，最后回退到 RSS
  */
 export async function getTwitterTweetsByUsername(
   username: string,
   count: number = 20
 ): Promise<TwitterTweet[]> {
-  // 暂时禁用 Twitter 数据获取，因为 twitter-openapi-typescript 库有 bug
-  // TODO: 修复或替敢为更稳定的 Twitter API 库
-  console.warn(`[Twitter] Disabled for @${username} due to library issues`);
-  return [] as TwitterTweet[];
-  
-  // 下面的代码暂时不执行
-  // eslint-disable-next-line no-unreachable
   try {
-    const client = await getClient();
-    if (!client) {
-      throw new Error('Failed to initialize Twitter client');
+    console.log(`[Twitter] Fetching ${count} tweets for @${username}`);
+    
+    // 首先尝试 Python twikit 方案（最新方案）
+    console.log(`[Twitter] Trying Python twikit method for @${username}`);
+    const pythonTweets = await getTwitterTweetsByUsernamePython(username, count);
+    
+    if (pythonTweets.length > 0) {
+      console.log(`[Twitter] Successfully fetched ${pythonTweets.length} tweets for @${username} via Python`);
+      return pythonTweets;
     }
     
-    // 先获取用户信息
-    const userResponse = await client.getUserApi().getUserByScreenName({ screenName: username });
-    const user = userResponse.data;
+    // 如果 Python 失败，尝试直接 API 方案
+    console.log(`[Twitter] Python method failed, trying Direct API method for @${username}`);
+    const directTweets = await getTwitterTweetsByUsernameDirectAPI(username, count);
     
-    if (!user || !user.raw?.result) {
-      console.warn(`User @${username} not found`);
-      return [];
+    if (directTweets.length > 0) {
+      console.log(`[Twitter] Successfully fetched ${directTweets.length} tweets for @${username} via Direct API`);
+      return directTweets;
     }
     
-    const userId = (user.raw.result as any).restId || (user.raw.result as any).id;
+    // 如果直接 API 失败，尝试 Nitter 方案
+    console.log(`[Twitter] Direct API failed, trying Nitter method for @${username}`);
+    const nitterTweets = await getTwitterTweetsByUsernameNitter(username, count);
     
-    if (!userId) {
-      console.warn(`Cannot get user ID for @${username}`);
-      return [];
+    if (nitterTweets.length > 0) {
+      console.log(`[Twitter] Successfully fetched ${nitterTweets.length} tweets for @${username} via Nitter`);
+      return nitterTweets;
     }
     
-    // 获取用户推文
-    let tweetsResponse;
+    // 如果 Nitter 也失败，尝试 GraphQL 方案
+    console.log(`[Twitter] Nitter failed, trying GraphQL method for @${username}`);
+    const graphqlTweets = await getTwitterTweetsByUsernameGraphql(username, count);
+    
+    if (graphqlTweets.length > 0) {
+      console.log(`[Twitter] Successfully fetched ${graphqlTweets.length} tweets for @${username} via GraphQL`);
+      return graphqlTweets;
+    }
+    
+    // 如果 GraphQL 失败，尝试原来的 API
     try {
-      console.log(`[Twitter] Fetching tweets for userId: ${userId}`);
-      tweetsResponse = await client.getTweetApi().getUserTweets({
-        userId,
-        count,
+      console.log(`[Twitter] GraphQL failed, trying API method for @${username}`);
+      const client = await getClient();
+      if (!client) {
+        throw new Error('Failed to initialize Twitter client');
+      }
+      
+      // 获取用户推文
+      const response = await client.getTweetApi().getUserTweets({
+        userId: username,
+        count: count,
       });
-      console.log(`[Twitter] Got response:`, tweetsResponse ? 'has data' : 'null/undefined');
-    } catch (apiError: any) {
-      console.error(`[Twitter] API error for @${username}:`, apiError?.message || apiError);
-      console.error(`[Twitter] Error type:`, apiError?.constructor?.name);
-      console.error(`[Twitter] Error stack:`, apiError?.stack);
-      // 即使出错也返回空数组而不是抱错
-      return [];
-    }
-    
-    // 检查响应是否有效
-    if (!tweetsResponse) {
-      console.warn(`No response from Twitter API for @${username}`);
-      return [];
-    }
-    
-    // tweetsResponse 可能有多种格式，尝试多种方式获取数据
-    let tweetsData = [];
-    
-    // 方式1：tweetsResponse.data.data
-    if ((tweetsResponse.data as any)?.data) {
-      tweetsData = (tweetsResponse.data as any).data;
-    }
-    // 方式2：tweetsResponse.data 直接是数组
-    else if (Array.isArray(tweetsResponse.data)) {
-      tweetsData = tweetsResponse.data;
-    }
-    // 方式3：tweetsResponse 直接是数组
-    else if (Array.isArray(tweetsResponse)) {
-      tweetsData = tweetsResponse;
-    }
-    // 方式4：tweetsResponse.result
-    else if ((tweetsResponse as any)?.result) {
-      tweetsData = (tweetsResponse as any).result;
-    }
-    
-    const tweets = Array.isArray(tweetsData) ? tweetsData : [];
-    console.log(`[Twitter] Parsed tweets for @${username}:`, tweets.length, 'items');
-    
-    if (tweets.length === 0) {
-      console.warn(`[Twitter] No tweets found for @${username}`);
-    }
-    
-    const posts: TwitterTweet[] = [];
-    
-    for (const tweet of tweets) {
-      try {
-        // 检查是否有有效的推文数据
-        if (!tweet) {
-          continue;
-        }
-        
-        // 尝试多种数据格式
-        let tweetData = tweet.raw?.result || tweet;
-        if (!tweetData) {
-          continue;
-        }
-        
-        const result = tweetData as any;
-        const legacy = result.legacy || {};
-        
-        // 检查是否有有效的文本
-        if (!legacy.fullText && !legacy.text) {
-          continue;
-        }
       
-      // 检查是否为转推和回复（但不过滤，让调用方决定）
-      const isRetweet = legacy.retweetedStatusResult !== undefined;
-      const isReply = legacy.inReplyToStatusIdStr !== undefined;
+      const tweetsData = response.data?.data || [];
       
-      const post: TwitterTweet = {
-        id: result.restId || tweet.id || '',
-        text: legacy.fullText || '',
-        created_at: legacy.createdAt || '',
-        retweet_count: legacy.retweetCount || 0,
-        favorite_count: legacy.favoriteCount || 0,
-        reply_count: legacy.replyCount || 0,
-        quote_count: legacy.quoteCount || 0,
-        is_retweet: isRetweet,
-        is_reply: isReply,
-      };
+      if (!tweetsData || tweetsData.length === 0) {
+        console.warn(`[Twitter] No tweets found via API for @${username}`);
+        throw new Error('No tweets found');
+      }
       
-      // 添加媒体信息
-      if (legacy.entities?.media && Array.isArray(legacy.entities.media) && legacy.entities.media.length > 0) {
+      const tweets: TwitterTweet[] = [];
+      
+      for (const tweet of tweetsData) {
         try {
-          post.media = legacy.entities.media.map((media: any) => ({
-            type: media.type || 'photo',
-            url: media.mediaUrlHttps || media.url || '',
-          }));
-        } catch (mediaError: any) {
-          console.warn(`[Twitter] Error processing media for tweet:`, mediaError?.message);
+          if (!tweet || !tweet.text) {
+            continue;
+          }
+          
+          // 检查是否为转推和回复
+          const isRetweet = tweet.text.startsWith('RT @');
+          const isReply = tweet.inReplyToStatusId !== undefined && tweet.inReplyToStatusId !== null;
+          
+          const post: TwitterTweet = {
+            id: tweet.id || '',
+            text: tweet.text || '',
+            created_at: tweet.createdAt ? new Date(tweet.createdAt).toISOString() : '',
+            retweet_count: tweet.retweetCount || 0,
+            favorite_count: tweet.likeCount || 0,
+            reply_count: tweet.replyCount || 0,
+            quote_count: tweet.quoteCount || 0,
+            is_retweet: isRetweet,
+            is_reply: isReply,
+          };
+          
+          tweets.push(post);
+          
+          if (tweets.length >= count) {
+            break;
+          }
+        } catch (tweetError: any) {
+          console.warn(`[Twitter] Error processing tweet for @${username}:`, tweetError?.message);
+          continue;
         }
       }
       
-        posts.push(post);
-        
-        // 限制返回数量
-        if (posts.length >= count) {
-          break;
-        }
-      } catch (tweetError: any) {
-        console.warn(`[Twitter] Error processing tweet for @${username}:`, tweetError?.message || tweetError);
-        continue;
+      if (tweets.length > 0) {
+        console.log(`[Twitter] Successfully fetched ${tweets.length} tweets for @${username} via API`);
+        return tweets;
       }
+    } catch (apiError: any) {
+      console.warn(`[Twitter] API method failed for @${username}:`, apiError?.message);
     }
     
-    return posts;
+    // 如果所有方案都失败，使用 RSS 方案
+    console.log(`[Twitter] All methods failed, falling back to RSS for @${username}`);
+    return await getTwitterTweetsByUsernameRss(username, count);
   } catch (error: any) {
-    console.error('Error fetching Twitter tweets:', error);
+    console.error(`[Twitter] Error fetching tweets for @${username}:`, error?.message);
     return [];
   }
 }
