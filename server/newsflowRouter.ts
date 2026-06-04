@@ -1,14 +1,49 @@
 import { z } from "zod";
+import type { TextContent, ImageContent, FileContent } from "./_core/llm";
 import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
 import https from "https";
 import http from "http";
 import { getTwitterTweetsByUsername } from "./twitterAdapter";
 import { getTruthSocialPosts, isTruthSocialConfigured } from "./truthSocialAdapter";
 import { getCachedPosts } from "./socialMediaCacheManager";
-// AI 摘要功能已移除（确保网站完全免费）
+// AI 摘要功能已移除（确保网站完全免費）
 import { getDb } from "./db";
 import { trackedPeople } from "../drizzle/schema";
 import { eq, and } from "drizzle-orm";
+import { invokeLLM } from "./_core/llm";
+
+// ============================================================
+// 翻译函数
+// ============================================================
+async function translateToChineseIfNeeded(text: string): Promise<string> {
+  try {
+    // 检查是否已经是中文
+    if (/[\u4e00-\u9fa5]/.test(text)) {
+      return text; // 已经是中文，不需要翻译
+    }
+
+    // 使用 LLM 翻译
+    const response = await invokeLLM({
+      messages: [
+        {
+          role: "system",
+          content: "You are a professional translator. Translate the following text to Chinese (Simplified). Only return the translated text, nothing else.",
+        },
+        {
+          role: "user",
+          content: text,
+        },
+      ],
+    });
+
+    const content = response.choices?.[0]?.message?.content;
+    const translated = typeof content === 'string' ? content : text;
+    return translated.trim();
+  } catch (error) {
+    console.error("[Translation] Error translating text:", error);
+    return text; // 翻译失败时返回原文
+  }
+}
 
 // ============================================================
 // VIP 人物数据库 - 内置重要人物信息
@@ -545,8 +580,18 @@ export const newsflowRouter = router({
           },
         }));
 
-        // 暂时跳过翻译，直接返回
-        return items;
+        // 添加中文翻译（仅需要翻译英文推文）
+        const translatedItems = await Promise.all(
+          items.map(async (item) => {
+            const titleZh = await translateToChineseIfNeeded(item.title);
+            return {
+              ...item,
+              titleZh: titleZh !== item.title ? titleZh : item.title,
+            };
+          })
+        );
+
+        return translatedItems;
       } catch (err) {
         console.error("Error fetching original tweets:", err);
         return [];

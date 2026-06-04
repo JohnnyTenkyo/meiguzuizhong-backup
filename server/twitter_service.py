@@ -9,6 +9,7 @@ import json
 import logging
 from typing import List, Dict, Any
 import asyncio
+import os
 from twikit import Client
 
 # 配置日志
@@ -26,8 +27,35 @@ def get_client():
     
     if twitter_client is None:
         try:
+            logger.info("[Twitter Service] Initializing twikit client...")
+            
+            # 创建客户端
             twitter_client = Client(language='en-US')
-            logger.info("[Twitter Service] Client initialized")
+            
+            # 获取凭证
+            auth_token = os.environ.get('TWIKIT_AUTH_TOKEN')
+            ct0 = os.environ.get('TWIKIT_CT0')
+            guest_id = os.environ.get('TWIKIT_GUEST_ID')
+            
+            if not auth_token or not ct0:
+                logger.error("[Twitter Service] Missing TWIKIT_AUTH_TOKEN or TWIKIT_CT0")
+                return None
+            
+            # 设置 cookies
+            cookies = {
+                'auth_token': auth_token,
+                'ct0': ct0,
+            }
+            
+            if guest_id:
+                cookies['guest_id'] = guest_id
+            
+            logger.info("[Twitter Service] Setting cookies for authentication...")
+            twitter_client.set_cookies(cookies)
+            
+            logger.info("[Twitter Service] Client initialized successfully")
+            return twitter_client
+            
         except Exception as e:
             logger.error(f"[Twitter Service] Failed to initialize client: {e}")
             return None
@@ -59,16 +87,10 @@ def get_tweets():
             # 异步函数包装
             async def fetch_tweets():
                 try:
-                    # 获取用户信息以获取 user_id
-                    user = await client.get_user_by_screen_name(username)
-                    if not user:
-                        logger.warning(f"[Twitter Service] User @{username} not found")
-                        return []
-                    
-                    logger.info(f"[Twitter Service] User ID for @{username}: {user.id}")
+                    logger.info(f"[Twitter Service] Fetching tweets for @{username}...")
                     
                     # 获取用户推文（仅原创推文）
-                    result = await client.get_user_tweets(user.id, tweet_type='Tweets', count=count)
+                    result = await client.get_user_tweets(username, tweet_type='Tweets', count=count)
                     
                     if not result or not result.data:
                         logger.warning(f"[Twitter Service] No tweets found for @{username}")
@@ -97,27 +119,30 @@ def get_tweets():
                             logger.warning(f"[Twitter Service] Error processing tweet: {e}")
                             continue
                     
+                    logger.info(f"[Twitter Service] Successfully fetched {len(tweets)} tweets for @{username}")
                     return tweets
+                    
                 except Exception as e:
                     logger.error(f"[Twitter Service] Error in fetch_tweets: {e}")
+                    import traceback
+                    traceback.print_exc()
                     return []
             
             # 运行异步函数
             tweets = asyncio.run(fetch_tweets())
             
-            if tweets:
-                logger.info(f"[Twitter Service] Successfully fetched {len(tweets)} tweets for @{username}")
-                return jsonify({'tweets': tweets})
-            else:
-                logger.warning(f"[Twitter Service] No tweets found for @{username}")
-                return jsonify({'tweets': []})
+            return jsonify({'tweets': tweets})
             
         except Exception as e:
             logger.error(f"[Twitter Service] Error fetching tweets for @{username}: {e}")
+            import traceback
+            traceback.print_exc()
             return jsonify({'error': str(e), 'tweets': []}), 500
             
     except Exception as e:
         logger.error(f"[Twitter Service] Unexpected error: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'error': str(e)}), 500
 
 @app.route('/user', methods=['GET'])
@@ -159,6 +184,8 @@ def get_user():
                     return user_data
                 except Exception as e:
                     logger.error(f"[Twitter Service] Error in fetch_user: {e}")
+                    import traceback
+                    traceback.print_exc()
                     return None
             
             # 运行异步函数
@@ -172,10 +199,14 @@ def get_user():
             
         except Exception as e:
             logger.error(f"[Twitter Service] Error fetching user profile for @{username}: {e}")
+            import traceback
+            traceback.print_exc()
             return jsonify({'error': str(e)}), 500
             
     except Exception as e:
         logger.error(f"[Twitter Service] Unexpected error: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
