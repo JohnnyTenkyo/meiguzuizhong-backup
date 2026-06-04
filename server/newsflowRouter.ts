@@ -528,25 +528,23 @@ export const newsflowRouter = router({
           },
         }));
 
-        // 先返回原文，后台程序异步翻译
-        setImmediate(async () => {
-          try {
-            const translatedItems = await Promise.all(
-              items.map(async (item) => {
-                const titleZh = await translateToChineseIfNeeded(item.title);
-                return {
-                  ...item,
-                  titleZh: titleZh !== item.title ? titleZh : item.title,
-                };
-              })
-            );
-            console.log('[newsflow] Translated', translatedItems.length, 'tweets');
-          } catch (err) {
-            console.error('[newsflow] Translation error:', err);
-          }
-        });
+        // 添加中文翻译（并行翻译）
+        const translatedItems = await Promise.all(
+          items.map(async (item) => {
+            try {
+              const titleZh = await translateToChineseIfNeeded(item.title);
+              return {
+                ...item,
+                titleZh: titleZh !== item.title ? titleZh : item.title,
+              };
+            } catch (err) {
+              console.error('[newsflow] Translation error for tweet:', err);
+              return item; // 翻译失败时返回原文
+            }
+          })
+        );
         
-        return items;
+        return translatedItems;
       } catch (err) {
         console.error("Error fetching Twitter timeline:", err);
         return [];
@@ -597,28 +595,23 @@ export const newsflowRouter = router({
           },
         }));
 
-        // 先返回原文，后台程序异步翻译
-        // 这样前端可以立即显示推文，而不是等待翻译完成
-        
-        // 后台程序异步翻译（不阻塞返回）
-        setImmediate(async () => {
-          try {
-            const translatedItems = await Promise.all(
-              items.map(async (item) => {
-                const titleZh = await translateToChineseIfNeeded(item.title);
-                return {
-                  ...item,
-                  titleZh: titleZh !== item.title ? titleZh : item.title,
-                };
-              })
-            );
-            console.log('[newsflow] Translated', translatedItems.length, 'tweets');
-          } catch (err) {
-            console.error('[newsflow] Translation error:', err);
-          }
-        });
+        // 添加中文翻译（并行翻译，但不阻塞返回）
+        const translatedItems = await Promise.all(
+          items.map(async (item) => {
+            try {
+              const titleZh = await translateToChineseIfNeeded(item.title);
+              return {
+                ...item,
+                titleZh: titleZh !== item.title ? titleZh : item.title,
+              };
+            } catch (err) {
+              console.error('[newsflow] Translation error for tweet:', err);
+              return item; // 翻译失败时返回原文
+            }
+          })
+        );
 
-        return items;
+        return translatedItems;
       } catch (err) {
         console.error("Error fetching original tweets:", err);
         return [];
