@@ -528,7 +528,24 @@ export const newsflowRouter = router({
           },
         }));
 
-        // 暂时跳过翻译，直接返回
+        // 先返回原文，后台程序异步翻译
+        setImmediate(async () => {
+          try {
+            const translatedItems = await Promise.all(
+              items.map(async (item) => {
+                const titleZh = await translateToChineseIfNeeded(item.title);
+                return {
+                  ...item,
+                  titleZh: titleZh !== item.title ? titleZh : item.title,
+                };
+              })
+            );
+            console.log('[newsflow] Translated', translatedItems.length, 'tweets');
+          } catch (err) {
+            console.error('[newsflow] Translation error:', err);
+          }
+        });
+        
         return items;
       } catch (err) {
         console.error("Error fetching Twitter timeline:", err);
@@ -580,18 +597,28 @@ export const newsflowRouter = router({
           },
         }));
 
-        // 添加中文翻译（仅需要翻译英文推文）
-        const translatedItems = await Promise.all(
-          items.map(async (item) => {
-            const titleZh = await translateToChineseIfNeeded(item.title);
-            return {
-              ...item,
-              titleZh: titleZh !== item.title ? titleZh : item.title,
-            };
-          })
-        );
+        // 先返回原文，后台程序异步翻译
+        // 这样前端可以立即显示推文，而不是等待翻译完成
+        
+        // 后台程序异步翻译（不阻塞返回）
+        setImmediate(async () => {
+          try {
+            const translatedItems = await Promise.all(
+              items.map(async (item) => {
+                const titleZh = await translateToChineseIfNeeded(item.title);
+                return {
+                  ...item,
+                  titleZh: titleZh !== item.title ? titleZh : item.title,
+                };
+              })
+            );
+            console.log('[newsflow] Translated', translatedItems.length, 'tweets');
+          } catch (err) {
+            console.error('[newsflow] Translation error:', err);
+          }
+        });
 
-        return translatedItems;
+        return items;
       } catch (err) {
         console.error("Error fetching original tweets:", err);
         return [];

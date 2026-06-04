@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { trpc } from "@/lib/trpc";
 
 // ============================================================
@@ -88,6 +88,12 @@ export default function VIPNewsFlow({ watchlistTickers = [] }: { watchlistTicker
     avatarEmoji: "👤",
   });
 
+  // 缓存机制：存储已加载过的人物数据
+  const contentCacheRef = useRef<Map<string, { tweets: NewsItem[], truthSocial: NewsItem[], news: NewsItem[] }>>(new Map());
+  
+  // 用于存储当前加载的人物 ID，避免重复加载
+  const loadingPersonIdRef = useRef<string | null>(null);
+
   // 获取 VIP 列表
   useEffect(() => {
     setLoadingVip(true);
@@ -145,6 +151,26 @@ export default function VIPNewsFlow({ watchlistTickers = [] }: { watchlistTicker
   // 获取选中人物的内容
   const fetchPersonContent = useCallback(async (person: VIPPerson) => {
     console.log('[VIPNewsFlow] Starting to fetch content for:', person.name);
+    
+    // 如果正在加载同一个人物，直接返回
+    if (loadingPersonIdRef.current === person.id) {
+      console.log('[VIPNewsFlow] Already loading this person, skipping');
+      return;
+    }
+    
+    // 检查缓存
+    const cacheKey = person.id;
+    const cached = contentCacheRef.current.get(cacheKey);
+    if (cached) {
+      console.log('[VIPNewsFlow] Loading from cache for:', person.name);
+      setOriginalTweets(cached.tweets);
+      setTruthSocialPosts(cached.truthSocial);
+      setNewsFeed(cached.news);
+      setLoading(false);
+      return;
+    }
+    
+    loadingPersonIdRef.current = person.id;
     setLoading(true);
     setOriginalTweets([]);
     setTruthSocialPosts([]);
@@ -154,9 +180,13 @@ export default function VIPNewsFlow({ watchlistTickers = [] }: { watchlistTicker
     const timeoutId = setTimeout(() => {
       console.warn('[VIPNewsFlow] Fetch timeout, stopping loading');
       setLoading(false);
-    }, 10000); // 10秒超时
+    }, 15000); // 15秒超时
 
     try {
+      let tweets: NewsItem[] = [];
+      let posts: NewsItem[] = [];
+      let news: NewsItem[] = [];
+      
       // 1. 获取原创推文
       if (person.twitterHandle) {
         console.log('[VIPNewsFlow] Fetching Twitter posts for:', person.twitterHandle);
@@ -170,11 +200,9 @@ export default function VIPNewsFlow({ watchlistTickers = [] }: { watchlistTicker
         );
         const resp1 = await fetch(`/api/trpc/newsflow.getPersonOriginalTweets?input=${input1}`);
         const data1 = await resp1.json();
-        const tweets = data1?.result?.data?.json || data1?.result?.data || [];
+        tweets = data1?.result?.data?.json || data1?.result?.data || [];
         console.log('[VIPNewsFlow] Original tweets fetched:', tweets.length);
         setOriginalTweets(Array.isArray(tweets) ? tweets : []);
-
-
       }
 
       // 3. 获取 Truth Social 帖子
@@ -191,7 +219,7 @@ export default function VIPNewsFlow({ watchlistTickers = [] }: { watchlistTicker
         const resp3 = await fetch(`/api/trpc/newsflow.getPersonTruthSocial?input=${input3}`);
         const data3 = await resp3.json();
         console.log('[VIPNewsFlow] Truth Social API response:', data3);
-        const posts = data3?.result?.data?.json || data3?.result?.data || [];
+        posts = data3?.result?.data?.json || data3?.result?.data || [];
         console.log('[VIPNewsFlow] Truth Social posts parsed:', posts.length, 'posts');
         if (posts.length > 0) {
           console.log('[VIPNewsFlow] First post sample:', posts[0]);
@@ -210,14 +238,22 @@ export default function VIPNewsFlow({ watchlistTickers = [] }: { watchlistTicker
       );
       const resp4 = await fetch(`/api/trpc/newsflow.getPersonNews?input=${input4}`);
       const data4 = await resp4.json();
-      const news = data4?.result?.data?.json || data4?.result?.data || [];
+      news = data4?.result?.data?.json || data4?.result?.data || [];
       console.log('[VIPNewsFlow] News fetched:', news.length);
       setNewsFeed(Array.isArray(news) ? news : []);
       console.log('[VIPNewsFlow] All content fetched successfully');
+      
+      // 保存到缓存
+      contentCacheRef.current.set(person.id, {
+        tweets: Array.isArray(tweets) ? tweets : [],
+        truthSocial: Array.isArray(posts) ? posts : [],
+        news: Array.isArray(news) ? news : []
+      });
     } catch (err) {
       console.error("Error fetching content:", err);
     } finally {
       clearTimeout(timeoutId);
+      loadingPersonIdRef.current = null;
       console.log('[VIPNewsFlow] Setting loading to false');
       setLoading(false);
     }
