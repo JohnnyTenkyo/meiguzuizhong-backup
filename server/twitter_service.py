@@ -30,7 +30,9 @@ def get_client():
             logger.info("[Twitter Service] Initializing twikit client...")
             
             # 创建客户端
-            twitter_client = Client(language='en-US')
+            # twifork 以 twikit 模块名提供兼容接口，并通过浏览器 TLS 指纹
+            # 适配 X 当前的交易校验，降低有效 Cookie 被 403 拒绝的概率。
+            twitter_client = Client(language='en-US', impersonate='chrome124')
             
             # 获取凭证
             auth_token = os.environ.get('TWIKIT_AUTH_TOKEN')
