@@ -18,6 +18,10 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+function notifyLocalAuthChanged() {
+  window.dispatchEvent(new Event('local-auth-changed'));
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
@@ -36,6 +40,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setLoading(false);
   }, []);
 
+  const persistSession = (data: any) => {
+    const newUser: User = { id: data.user.id, name: data.user.name };
+    setUser(newUser);
+    localStorage.setItem('user', JSON.stringify(newUser));
+    localStorage.setItem('auth_token', data.token);
+    localStorage.setItem('localUserId', String(data.user.id));
+    notifyLocalAuthChanged();
+  };
+
   const register = async (username: string, password: string): Promise<{ success: boolean; error?: string }> => {
     try {
       const res = await fetch('/api/auth/register', {
@@ -45,11 +58,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       });
       const data = await res.json();
       if (data.success) {
-        const newUser: User = { id: data.user.id, name: data.user.name };
-        setUser(newUser);
-        localStorage.setItem('user', JSON.stringify(newUser));
-        localStorage.setItem('auth_token', data.token);
-        localStorage.setItem('localUserId', String(data.user.id));
+        persistSession(data);
         return { success: true };
       }
       return { success: false, error: data.error || '注册失败' };
@@ -67,11 +76,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       });
       const data = await res.json();
       if (data.success) {
-        const newUser: User = { id: data.user.id, name: data.user.name };
-        setUser(newUser);
-        localStorage.setItem('user', JSON.stringify(newUser));
-        localStorage.setItem('auth_token', data.token);
-        localStorage.setItem('localUserId', String(data.user.id));
+        persistSession(data);
         return { success: true };
       }
       return { success: false, error: data.error || '登录失败' };
@@ -92,9 +97,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         body: JSON.stringify({ oldPassword, newPassword }),
       });
       const data = await res.json();
-      if (data.success) {
-        return { success: true };
-      }
+      if (data.success) return { success: true };
       return { success: false, error: data.error || '修改密码失败' };
     } catch {
       return { success: false, error: '网络错误' };
@@ -106,20 +109,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     localStorage.removeItem('user');
     localStorage.removeItem('auth_token');
     localStorage.removeItem('localUserId');
-  };
-
-  const value: AuthContextType = {
-    user,
-    isAuthenticated: !!user,
-    loading,
-    login,
-    register,
-    changePassword,
-    logout,
+    notifyLocalAuthChanged();
   };
 
   return (
-    <AuthContext.Provider value={value}>
+    <AuthContext.Provider value={{ user, isAuthenticated: !!user, loading, login, register, changePassword, logout }}>
       {children}
     </AuthContext.Provider>
   );
@@ -127,8 +121,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
 export function useAuth() {
   const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within AuthProvider');
-  }
+  if (!context) throw new Error('useAuth must be used within AuthProvider');
   return context;
 }

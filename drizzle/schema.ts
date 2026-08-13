@@ -103,7 +103,7 @@ export type InsertBacktestPosition = typeof backtestPositions.$inferInsert;
  */
 export const trackedPeople = mysqlTable("tracked_people", {
   id: int("id").autoincrement().primaryKey(),
-  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  userId: int("userId").notNull().references(() => localUsers.id, { onDelete: "cascade" }),
   name: varchar("name", { length: 128 }).notNull(),
   nameZh: varchar("nameZh", { length: 128 }),
   title: varchar("title", { length: 256 }),

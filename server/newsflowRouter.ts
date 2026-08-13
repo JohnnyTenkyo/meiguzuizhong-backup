@@ -1,6 +1,5 @@
 import { z } from "zod";
-import type { TextContent, ImageContent, FileContent } from "./_core/llm";
-import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
+import { publicProcedure, localProtectedProcedure, router } from "./_core/trpc";
 import https from "https";
 import http from "http";
 import { getTwitterTweetsByUsername } from "./twitterAdapter";
@@ -10,39 +9,21 @@ import { getCachedPosts } from "./socialMediaCacheManager";
 import { getDb } from "./db";
 import { trackedPeople } from "../drizzle/schema";
 import { eq, and } from "drizzle-orm";
-import { invokeLLM } from "./_core/llm";
+import { getAutoFollowAccounts } from "./ceoMapping";
 
 // ============================================================
 // 翻译函数
 // ============================================================
+const TRANSLATION_CACHE_TTL_MS = 6 * 60 * 60 * 1000;
+const translationCache = new Map<string, { text: string; expiresAt: number }>();
+
 async function translateToChineseIfNeeded(text: string): Promise<string> {
-  try {
-    // 检查是否已经是中文
-    if (/[\u4e00-\u9fa5]/.test(text)) {
-      return text; // 已经是中文，不需要翻译
-    }
-
-    // 使用 LLM 翻译
-    const response = await invokeLLM({
-      messages: [
-        {
-          role: "system",
-          content: "You are a professional translator. Translate the following text to Chinese (Simplified). Only return the translated text, nothing else.",
-        },
-        {
-          role: "user",
-          content: text,
-        },
-      ],
-    });
-
-    const content = response.choices?.[0]?.message?.content;
-    const translated = typeof content === 'string' ? content : text;
-    return translated.trim();
-  } catch (error) {
-    console.error("[Translation] Error translating text:", error);
-    return text; // 翻译失败时返回原文
-  }
+  if (!text || /[\u4e00-\u9fa5]/.test(text)) return text;
+  const cached = translationCache.get(text);
+  if (cached && cached.expiresAt > Date.now()) return cached.text;
+  const translated = await translateText(text);
+  translationCache.set(text, { text: translated, expiresAt: Date.now() + TRANSLATION_CACHE_TTL_MS });
+  return translated;
 }
 
 // ============================================================
@@ -290,6 +271,29 @@ const VIP_PEOPLE: VIPPerson[] = [
     relatedTickers: ["PSH"],
     avatarEmoji: "💼",
   },
+  {
+    id: "maojie",
+    name: "XTrader Maojie",
+    nameZh: "XTrader猫姐美股交易",
+    title: "U.S. equities trader and XTrader Data Tech founder",
+    titleZh: "美股交易者、XTrader Data Tech 创始人",
+    org: "XTrader Data Tech",
+    twitterHandle: "maojietrading",
+    category: "金融",
+    avatarEmoji: "📈",
+  },
+  {
+    id: "serenity",
+    name: "Serenity",
+    nameZh: "Serenity",
+    title: "AI and semiconductor supply-chain researcher",
+    titleZh: "AI 与半导体供应链研究者",
+    org: "Independent research",
+    twitterHandle: "aleabitoreddit",
+    category: "科技",
+    relatedTickers: ["NVDA", "AMD", "TSM"],
+    avatarEmoji: "🐉",
+  },
 ];
 
 // ============================================================
@@ -379,6 +383,7 @@ function parseGoogleNewsRSS(xml: string): NewsItem[] {
 // ============================================================
 async function translateText(text: string): Promise<string> {
   try {
+    if (!text || /[\u4e00-\u9fa5]/.test(text)) return text;
     const encoded = encodeURIComponent(text);
     const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=zh-CN&dt=t&q=${encoded}`;
     const resp = await fetchUrl(url);
@@ -403,6 +408,20 @@ async function translateText(text: string): Promise<string> {
     console.warn('[Translation] Error translating text:', error);
     return text;
   }
+}
+
+async function translateItems<T extends NewsItem>(items: T[], concurrency = 4): Promise<T[]> {
+  const output = [...items];
+  let cursor = 0;
+  const worker = async () => {
+    while (cursor < items.length) {
+      const index = cursor++;
+      const item = items[index];
+      output[index] = { ...item, titleZh: await translateToChineseIfNeeded(item.title) };
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(concurrency, items.length) }, worker));
+  return output;
 }
 
 // ============================================================
@@ -528,23 +547,7 @@ export const newsflowRouter = router({
           },
         }));
 
-        // 添加中文翻译（并行翻译）
-        const translatedItems = await Promise.all(
-          items.map(async (item) => {
-            try {
-              const titleZh = await translateToChineseIfNeeded(item.title);
-              return {
-                ...item,
-                titleZh: titleZh !== item.title ? titleZh : item.title,
-              };
-            } catch (err) {
-              console.error('[newsflow] Translation error for tweet:', err);
-              return item; // 翻译失败时返回原文
-            }
-          })
-        );
-        
-        return translatedItems;
+        return translateItems(items);
       } catch (err) {
         console.error("Error fetching Twitter timeline:", err);
         return [];
@@ -595,23 +598,7 @@ export const newsflowRouter = router({
           },
         }));
 
-        // 添加中文翻译（并行翻译，但不阻塞返回）
-        const translatedItems = await Promise.all(
-          items.map(async (item) => {
-            try {
-              const titleZh = await translateToChineseIfNeeded(item.title);
-              return {
-                ...item,
-                titleZh: titleZh !== item.title ? titleZh : item.title,
-              };
-            } catch (err) {
-              console.error('[newsflow] Translation error for tweet:', err);
-              return item; // 翻译失败时返回原文
-            }
-          })
-        );
-
-        return translatedItems;
+        return translateItems(items);
       } catch (err) {
         console.error("Error fetching original tweets:", err);
         return [];
@@ -858,6 +845,10 @@ export const newsflowRouter = router({
     }))
     .query(async ({ input }) => {
       const personSet = new Map<string, { name: string; nameZh: string; title: string; titleZh: string; avatarEmoji: string; ticker: string; twitterHandle?: string; truthSocialHandle?: string }>();
+      const addPerson = (person: { name: string; nameZh: string; title: string; titleZh: string; avatarEmoji: string; ticker: string; twitterHandle?: string; truthSocialHandle?: string }) => {
+        const key = person.twitterHandle?.toLowerCase() || person.name.toLowerCase();
+        if (!personSet.has(key)) personSet.set(key, person);
+      };
 
       for (const ticker of input.tickers) {
         const t = ticker.toUpperCase();
@@ -865,8 +856,8 @@ export const newsflowRouter = router({
         const vipIds = TICKER_TO_PEOPLE[t] || [];
         for (const id of vipIds) {
           const p = VIP_PEOPLE.find((v) => v.id === id);
-          if (p && !personSet.has(p.name)) {
-            personSet.set(p.name, {
+          if (p) {
+            addPerson({
               name: p.name,
               nameZh: p.nameZh,
               title: p.title,
@@ -881,8 +872,8 @@ export const newsflowRouter = router({
         // 从额外映射查找
         const extras = EXTRA_TICKER_MAP[t] || [];
         for (const e of extras) {
-          if (!personSet.has(e.name)) {
-            personSet.set(e.name, {
+          {
+            addPerson({
               name: e.name,
               nameZh: e.nameZh,
               title: e.title,
@@ -893,6 +884,17 @@ export const newsflowRouter = router({
               truthSocialHandle: e.truthSocialHandle,
             });
           }
+        }
+        for (const account of getAutoFollowAccounts(t)) {
+          addPerson({
+            name: account.name,
+            nameZh: account.nameZh,
+            title: account.title,
+            titleZh: account.titleZh,
+            avatarEmoji: account.avatarEmoji,
+            ticker: t,
+            twitterHandle: account.twitterHandle,
+          });
         }
       }
 
@@ -905,8 +907,8 @@ export const newsflowRouter = router({
   // ============================================================
 
   // 获取用户的自定义追踪人物列表
-  getTrackedPeople: protectedProcedure.query(async ({ ctx }) => {
-    const userId = ctx.user.id;
+  getTrackedPeople: localProtectedProcedure.query(async ({ ctx }) => {
+    const userId = ctx.localUser.id;
     const db = await getDb();
     if (!db) return [];
     const people = await db.select().from(trackedPeople).where(eq(trackedPeople.userId, userId));
@@ -914,9 +916,9 @@ export const newsflowRouter = router({
   }),
 
   // 添加自定义追踪人物
-  addTrackedPerson: protectedProcedure
+  addTrackedPerson: localProtectedProcedure
     .input(z.object({
-      name: z.string().min(1),
+      name: z.string().optional(),
       nameZh: z.string().optional(),
       title: z.string().optional(),
       titleZh: z.string().optional(),
@@ -926,17 +928,21 @@ export const newsflowRouter = router({
       avatarEmoji: z.string().default("👤"),
     }))
     .mutation(async ({ ctx, input }) => {
-      const userId = ctx.user.id;
+      const userId = ctx.localUser.id;
       const db = await getDb();
       if (!db) throw new Error("Database not available");
+      const twitterHandle = input.twitterHandle?.trim().replace(/^@/, "") || undefined;
+      const truthSocialHandle = input.truthSocialHandle?.trim().replace(/^@/, "") || undefined;
+      const name = input.name?.trim() || twitterHandle || truthSocialHandle;
+      if (!name) throw new Error("请至少填写姓名或社交账号");
       const [person] = await db.insert(trackedPeople).values({
         userId,
-        name: input.name,
-        nameZh: input.nameZh || input.name,
+        name,
+        nameZh: input.nameZh?.trim() || name,
         title: input.title || "",
         titleZh: input.titleZh || input.title || "",
-        twitterHandle: input.twitterHandle,
-        truthSocialHandle: input.truthSocialHandle,
+        twitterHandle,
+        truthSocialHandle,
         category: input.category,
         avatarEmoji: input.avatarEmoji,
       });
@@ -944,12 +950,12 @@ export const newsflowRouter = router({
     }),
 
   // 删除自定义追踪人物
-  deleteTrackedPerson: protectedProcedure
+  deleteTrackedPerson: localProtectedProcedure
     .input(z.object({
       id: z.number(),
     }))
     .mutation(async ({ ctx, input }) => {
-      const userId = ctx.user.id;
+      const userId = ctx.localUser.id;
       const db = await getDb();
       if (!db) throw new Error("Database not available");
       await db.delete(trackedPeople).where(
@@ -962,7 +968,7 @@ export const newsflowRouter = router({
     }),
 
   // 更新自定义追踪人物
-  updateTrackedPerson: protectedProcedure
+  updateTrackedPerson: localProtectedProcedure
     .input(z.object({
       id: z.number(),
       name: z.string().optional(),
@@ -975,7 +981,7 @@ export const newsflowRouter = router({
       avatarEmoji: z.string().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      const userId = ctx.user.id;
+      const userId = ctx.localUser.id;
       const { id, ...updates } = input;
       const db = await getDb();
       if (!db) throw new Error("Database not available");

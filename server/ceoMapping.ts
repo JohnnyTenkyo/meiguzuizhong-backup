@@ -9,6 +9,15 @@ export interface CEOInfo {
   twitterHandle: string;
 }
 
+export interface AutoFollowAccount {
+  name: string;
+  nameZh: string;
+  title: string;
+  titleZh: string;
+  twitterHandle: string;
+  avatarEmoji: string;
+}
+
 export const CEO_MAPPING: Record<string, CEOInfo> = {
   // 科技公司
   'AAPL': { name: 'Tim Cook', nameZh: '蒂姆·库克', twitterHandle: 'tim_cook' },
@@ -133,6 +142,39 @@ export const CEO_MAPPING: Record<string, CEOInfo> = {
   'LI': { name: 'Li Xiang', nameZh: '李想', twitterHandle: 'lixiang_li' },
 };
 
+/** 自选股同时追踪公司官方 X 账号；缺少可靠账号时宁可不填，避免错误关注。 */
+export const COMPANY_X_MAPPING: Record<string, Omit<AutoFollowAccount, 'title' | 'titleZh' | 'avatarEmoji'>> = {
+  AAPL: { name: 'Apple', nameZh: '苹果', twitterHandle: 'Apple' },
+  MSFT: { name: 'Microsoft', nameZh: '微软', twitterHandle: 'Microsoft' },
+  NVDA: { name: 'NVIDIA', nameZh: '英伟达', twitterHandle: 'nvidia' },
+  GOOGL: { name: 'Google', nameZh: '谷歌', twitterHandle: 'Google' },
+  META: { name: 'Meta', nameZh: 'Meta', twitterHandle: 'Meta' },
+  TSLA: { name: 'Tesla', nameZh: '特斯拉', twitterHandle: 'Tesla' },
+  AMZN: { name: 'Amazon', nameZh: '亚马逊', twitterHandle: 'Amazon' },
+  NFLX: { name: 'Netflix', nameZh: '奈飞', twitterHandle: 'netflix' },
+  AMD: { name: 'AMD', nameZh: 'AMD', twitterHandle: 'AMD' },
+  INTC: { name: 'Intel', nameZh: '英特尔', twitterHandle: 'intel' },
+  QCOM: { name: 'Qualcomm', nameZh: '高通', twitterHandle: 'qualcomm' },
+  AVGO: { name: 'Broadcom', nameZh: '博通', twitterHandle: 'Broadcom' },
+  MU: { name: 'Micron Technology', nameZh: '美光科技', twitterHandle: 'MicronTech' },
+  ADBE: { name: 'Adobe', nameZh: 'Adobe', twitterHandle: 'Adobe' },
+  CRM: { name: 'Salesforce', nameZh: 'Salesforce', twitterHandle: 'salesforce' },
+  ORCL: { name: 'Oracle', nameZh: '甲骨文', twitterHandle: 'Oracle' },
+  PLTR: { name: 'Palantir', nameZh: 'Palantir', twitterHandle: 'PalantirTech' },
+  COIN: { name: 'Coinbase', nameZh: 'Coinbase', twitterHandle: 'coinbase' },
+  HOOD: { name: 'Robinhood', nameZh: 'Robinhood', twitterHandle: 'RobinhoodApp' },
+  SHOP: { name: 'Shopify', nameZh: 'Shopify', twitterHandle: 'Shopify' },
+  JPM: { name: 'JPMorgan Chase', nameZh: '摩根大通', twitterHandle: 'jpmorgan' },
+  BAC: { name: 'Bank of America', nameZh: '美国银行', twitterHandle: 'BankofAmerica' },
+  GS: { name: 'Goldman Sachs', nameZh: '高盛', twitterHandle: 'GoldmanSachs' },
+  WFC: { name: 'Wells Fargo', nameZh: '富国银行', twitterHandle: 'WellsFargo' },
+  BLK: { name: 'BlackRock', nameZh: '贝莱德', twitterHandle: 'blackrock' },
+  XOM: { name: 'ExxonMobil', nameZh: '埃克森美孚', twitterHandle: 'exxonmobil' },
+  F: { name: 'Ford', nameZh: '福特', twitterHandle: 'Ford' },
+  GM: { name: 'General Motors', nameZh: '通用汽车', twitterHandle: 'GM' },
+  UBER: { name: 'Uber', nameZh: '优步', twitterHandle: 'Uber' },
+};
+
 /**
  * 根据股票代码获取 CEO 信息
  */
@@ -145,4 +187,39 @@ export function getCEOInfo(symbol: string): CEOInfo | null {
  */
 export function hasCEOInfo(symbol: string): boolean {
   return symbol.toUpperCase() in CEO_MAPPING;
+}
+
+/** 返回某只自选股需要自动追踪的 CEO 与公司官方账号，并按 X handle 去重。 */
+export function getAutoFollowAccounts(symbol: string): AutoFollowAccount[] {
+  const ticker = symbol.toUpperCase();
+  const accounts: AutoFollowAccount[] = [];
+  const ceo = CEO_MAPPING[ticker];
+  const company = COMPANY_X_MAPPING[ticker];
+
+  if (ceo?.twitterHandle) {
+    accounts.push({
+      name: ceo.name,
+      nameZh: ceo.nameZh,
+      title: 'Chief Executive Officer',
+      titleZh: '首席执行官',
+      twitterHandle: ceo.twitterHandle,
+      avatarEmoji: '👔',
+    });
+  }
+  if (company?.twitterHandle) {
+    accounts.push({
+      ...company,
+      title: 'Official company account',
+      titleZh: '公司官方账号',
+      avatarEmoji: '🏢',
+    });
+  }
+
+  const seen = new Set<string>();
+  return accounts.filter(account => {
+    const handle = account.twitterHandle.toLowerCase();
+    if (seen.has(handle)) return false;
+    seen.add(handle);
+    return true;
+  });
 }

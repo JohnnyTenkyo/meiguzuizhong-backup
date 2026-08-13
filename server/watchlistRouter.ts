@@ -1,300 +1,137 @@
 import { z } from "zod";
-import { publicProcedure, router } from "./_core/trpc";
+import { localProtectedProcedure, router } from "./_core/trpc";
 import { getDb } from "./db";
-import { watchlist, InsertWatchlist, trackedPeople } from "../drizzle/schema";
+import { watchlist, trackedPeople } from "../drizzle/schema";
 import { eq, and } from "drizzle-orm";
-import { getCEOInfo } from "./ceoMapping";
+import { getAutoFollowAccounts } from "./ceoMapping";
+
+async function syncAutoFollowAccounts(db: any, localUserId: number, symbol: string) {
+  for (const account of getAutoFollowAccounts(symbol)) {
+    const handle = account.twitterHandle.trim().replace(/^@/, "");
+    const existing = await db
+      .select({ id: trackedPeople.id })
+      .from(trackedPeople)
+      .where(and(
+        eq(trackedPeople.userId, localUserId),
+        eq(trackedPeople.twitterHandle, handle),
+      ))
+      .limit(1);
+
+    if (existing.length === 0) {
+      await db.insert(trackedPeople).values({
+        userId: localUserId,
+        name: account.name,
+        nameZh: account.nameZh,
+        title: account.title,
+        titleZh: account.titleZh,
+        twitterHandle: handle,
+        category: "科技",
+        avatarEmoji: account.avatarEmoji,
+      });
+      console.log(`[Watchlist] Auto-followed @${handle} for ${symbol}`);
+    }
+  }
+}
 
 export const watchlistRouter = router({
-  // 获取用户的自选股列表
-  getWatchlist: publicProcedure
-    .input(z.object({ localUserId: z.number() }))
-    .query(async ({ input }) => {
+  getWatchlist: localProtectedProcedure.query(async ({ ctx }) => {
+    const db = await getDb();
+    if (!db) return [];
+    const rows = await db
+      .select({ symbol: watchlist.symbol })
+      .from(watchlist)
+      .where(eq(watchlist.localUserId, ctx.localUser.id))
+      .orderBy(watchlist.addedAt);
+    return rows.map(row => row.symbol);
+  }),
+
+  addToWatchlist: localProtectedProcedure
+    .input(z.object({ symbol: z.string().min(1) }))
+    .mutation(async ({ ctx, input }) => {
       const db = await getDb();
-      if (!db) {
-        console.warn("[Watchlist] Database not available");
-        return [];
+      if (!db) throw new Error("Database not available");
+      const symbol = input.symbol.toUpperCase();
+      const existing = await db.select({ id: watchlist.id }).from(watchlist)
+        .where(and(eq(watchlist.localUserId, ctx.localUser.id), eq(watchlist.symbol, symbol))).limit(1);
+      if (existing.length === 0) {
+        await db.insert(watchlist).values({ localUserId: ctx.localUser.id, symbol });
       }
-
-      try {
-        const result = await db
-          .select({ symbol: watchlist.symbol, addedAt: watchlist.addedAt })
-          .from(watchlist)
-          .where(eq(watchlist.localUserId, input.localUserId))
-          .orderBy(watchlist.addedAt);
-
-        return result.map(r => r.symbol);
-      } catch (error) {
-        console.error("[Watchlist] Failed to get watchlist:", error);
-        return [];
-      }
+      await syncAutoFollowAccounts(db, ctx.localUser.id, symbol);
+      return { success: true, added: existing.length === 0 };
     }),
 
-  // 添加股票到自选
-  addToWatchlist: publicProcedure
-    .input(z.object({ localUserId: z.number(), symbol: z.string() }))
-    .mutation(async ({ input }) => {
+  removeFromWatchlist: localProtectedProcedure
+    .input(z.object({ symbol: z.string().min(1) }))
+    .mutation(async ({ ctx, input }) => {
       const db = await getDb();
-      if (!db) {
-        throw new Error("Database not available");
-      }
-
-      try {
-        // 检查是否已存在
-        const existing = await db
-          .select()
-          .from(watchlist)
-          .where(
-            and(
-              eq(watchlist.localUserId, input.localUserId),
-              eq(watchlist.symbol, input.symbol)
-            )
-          )
-          .limit(1);
-
-        if (existing.length > 0) {
-          return { success: true, message: "Already in watchlist" };
-        }
-
-        // 添加到自选
-        await db.insert(watchlist).values({
-          localUserId: input.localUserId,
-          symbol: input.symbol,
-        } as InsertWatchlist);
-
-        // 自动关注 CEO
-        try {
-          const ceoInfo = getCEOInfo(input.symbol);
-          if (ceoInfo && ceoInfo.twitterHandle) {
-            // 检查是否已关注
-              const existingTrack = await db
-                .select()
-                .from(trackedPeople)
-                .where(
-                  and(
-                    eq(trackedPeople.userId, input.localUserId),
-                    eq(trackedPeople.twitterHandle, ceoInfo.twitterHandle)
-                  )
-                )
-                .limit(1);
-
-              // 如果未关注，则添加
-              if (existingTrack.length === 0) {
-                await db.insert(trackedPeople).values({
-                  userId: input.localUserId,
-                  twitterHandle: ceoInfo.twitterHandle,
-                  name: ceoInfo.name,
-                  nameZh: ceoInfo.nameZh,
-                  category: '科技',
-                });
-              console.log(`[Watchlist] Auto-followed CEO ${ceoInfo.name} for ${input.symbol}`);
-            }
-          }
-        } catch (error) {
-          console.error(`[Watchlist] Failed to auto-follow CEO for ${input.symbol}:`, error);
-          // 不影响主流程
-        }
-
-        return { success: true, message: "Added to watchlist" };
-      } catch (error) {
-        console.error("[Watchlist] Failed to add to watchlist:", error);
-        throw error;
-      }
+      if (!db) throw new Error("Database not available");
+      await db.delete(watchlist).where(and(
+        eq(watchlist.localUserId, ctx.localUser.id),
+        eq(watchlist.symbol, input.symbol.toUpperCase()),
+      ));
+      return { success: true };
     }),
 
-  // 从自选中删除股票
-  removeFromWatchlist: publicProcedure
-    .input(z.object({ localUserId: z.number(), symbol: z.string() }))
-    .mutation(async ({ input }) => {
+  toggleWatchlist: localProtectedProcedure
+    .input(z.object({ symbol: z.string().min(1) }))
+    .mutation(async ({ ctx, input }) => {
       const db = await getDb();
-      if (!db) {
-        throw new Error("Database not available");
+      if (!db) throw new Error("Database not available");
+      const symbol = input.symbol.toUpperCase();
+      const existing = await db.select({ id: watchlist.id }).from(watchlist)
+        .where(and(eq(watchlist.localUserId, ctx.localUser.id), eq(watchlist.symbol, symbol))).limit(1);
+      if (existing.length > 0) {
+        await db.delete(watchlist).where(and(eq(watchlist.localUserId, ctx.localUser.id), eq(watchlist.symbol, symbol)));
+        return { success: true, added: false };
       }
-
-      try {
-        await db
-          .delete(watchlist)
-          .where(
-            and(
-              eq(watchlist.localUserId, input.localUserId),
-              eq(watchlist.symbol, input.symbol)
-            )
-          );
-
-        return { success: true, message: "Removed from watchlist" };
-      } catch (error) {
-        console.error("[Watchlist] Failed to remove from watchlist:", error);
-        throw error;
-      }
+      await db.insert(watchlist).values({ localUserId: ctx.localUser.id, symbol });
+      await syncAutoFollowAccounts(db, ctx.localUser.id, symbol);
+      return { success: true, added: true };
     }),
 
-  // 切换股票的自选状态
-  toggleWatchlist: publicProcedure
-    .input(z.object({ localUserId: z.number(), symbol: z.string() }))
-    .mutation(async ({ input }) => {
+  addMultipleToWatchlist: localProtectedProcedure
+    .input(z.object({ symbols: z.array(z.string().min(1)) }))
+    .mutation(async ({ ctx, input }) => {
       const db = await getDb();
-      if (!db) {
-        throw new Error("Database not available");
+      if (!db) throw new Error("Database not available");
+      const existing = await db.select({ symbol: watchlist.symbol }).from(watchlist)
+        .where(eq(watchlist.localUserId, ctx.localUser.id));
+      const known = new Set(existing.map(item => item.symbol));
+      const toAdd = [...new Set(input.symbols.map(symbol => symbol.toUpperCase()))].filter(symbol => !known.has(symbol));
+      if (toAdd.length > 0) {
+        await db.insert(watchlist).values(toAdd.map(symbol => ({ localUserId: ctx.localUser.id, symbol })));
       }
-
-      try {
-        // 检查是否已存在
-        const existing = await db
-          .select()
-          .from(watchlist)
-          .where(
-            and(
-              eq(watchlist.localUserId, input.localUserId),
-              eq(watchlist.symbol, input.symbol)
-            )
-          )
-          .limit(1);
-
-        if (existing.length > 0) {
-          // 删除
-          await db
-            .delete(watchlist)
-            .where(
-              and(
-                eq(watchlist.localUserId, input.localUserId),
-                eq(watchlist.symbol, input.symbol)
-              )
-            );
-          return { success: true, added: false };
-        } else {
-          // 添加
-          await db.insert(watchlist).values({
-            localUserId: input.localUserId,
-            symbol: input.symbol,
-          } as InsertWatchlist);
-
-          // 自动关注 CEO
-          try {
-            const ceoInfo = getCEOInfo(input.symbol);
-            if (ceoInfo && ceoInfo.twitterHandle) {
-              // 检查是否已关注
-              const existingTrack = await db
-                .select()
-                .from(trackedPeople)
-                .where(
-                  and(
-                    eq(trackedPeople.userId, input.localUserId),
-                    eq(trackedPeople.twitterHandle, ceoInfo.twitterHandle)
-                  )
-                )
-                .limit(1);
-
-              // 如果未关注，则添加
-              if (existingTrack.length === 0) {
-                await db.insert(trackedPeople).values({
-                  userId: input.localUserId,
-                  twitterHandle: ceoInfo.twitterHandle,
-                  name: ceoInfo.name,
-                  nameZh: ceoInfo.nameZh,
-                  category: '科技',
-                });
-                console.log(`[Watchlist] Auto-followed CEO ${ceoInfo.name} for ${input.symbol}`);
-              }
-            }
-          } catch (error) {
-            console.error(`[Watchlist] Failed to auto-follow CEO for ${input.symbol}:`, error);
-            // 不影响主流程
-          }
-
-          return { success: true, added: true };
-        }
-      } catch (error) {
-        console.error("[Watchlist] Failed to toggle watchlist:", error);
-        throw error;
-      }
+      for (const symbol of [...known, ...toAdd]) await syncAutoFollowAccounts(db, ctx.localUser.id, symbol);
+      return { success: true, added: toAdd.length };
     }),
 
-  // 自动删除无效股票
-  removeInvalidSymbols: publicProcedure
-    .input(z.object({ localUserId: z.number(), invalidSymbols: z.array(z.string()) }))
-    .mutation(async ({ input }) => {
+  syncWatchlistTracking: localProtectedProcedure.mutation(async ({ ctx }) => {
+    const db = await getDb();
+    if (!db) throw new Error("Database not available");
+    const rows = await db.select({ symbol: watchlist.symbol }).from(watchlist)
+      .where(eq(watchlist.localUserId, ctx.localUser.id));
+    for (const row of rows) await syncAutoFollowAccounts(db, ctx.localUser.id, row.symbol);
+    return { success: true, tickerCount: rows.length };
+  }),
+
+  removeInvalidSymbols: localProtectedProcedure
+    .input(z.object({ invalidSymbols: z.array(z.string()) }))
+    .mutation(async ({ ctx, input }) => {
       const db = await getDb();
-      if (!db || input.invalidSymbols.length === 0) {
-        return { success: true, removed: 0 };
+      if (!db || input.invalidSymbols.length === 0) return { success: true, removed: 0 };
+      for (const symbol of input.invalidSymbols) {
+        await db.delete(watchlist).where(and(
+          eq(watchlist.localUserId, ctx.localUser.id),
+          eq(watchlist.symbol, symbol.toUpperCase()),
+        ));
       }
-
-      try {
-        // 删除所有无效的股票
-        for (const symbol of input.invalidSymbols) {
-          await db
-            .delete(watchlist)
-            .where(
-              and(
-                eq(watchlist.localUserId, input.localUserId),
-                eq(watchlist.symbol, symbol)
-              )
-            );
-          console.log(`[Watchlist] Removed invalid symbol: ${symbol}`);
-        }
-
-        return { success: true, removed: input.invalidSymbols.length };
-      } catch (error) {
-        console.error("[Watchlist] Failed to remove invalid symbols:", error);
-        return { success: false, removed: 0 };
-      }
+      return { success: true, removed: input.invalidSymbols.length };
     }),
 
-  // 清空自选股
-  clearWatchlist: publicProcedure
-    .input(z.object({ localUserId: z.number() }))
-    .mutation(async ({ input }) => {
-      const db = await getDb();
-      if (!db) {
-        throw new Error("Database not available");
-      }
-
-      try {
-        await db.delete(watchlist).where(eq(watchlist.localUserId, input.localUserId));
-
-        return { success: true, message: "Watchlist cleared" };
-      } catch (error) {
-        console.error("[Watchlist] Failed to clear watchlist:", error);
-        throw error;
-      }
-    }),
-
-  // 批量添加自选股(用于迁移本地数据)
-  addMultipleToWatchlist: publicProcedure
-    .input(z.object({ localUserId: z.number(), symbols: z.array(z.string()) }))
-    .mutation(async ({ input }) => {
-      const db = await getDb();
-      if (!db) {
-        throw new Error("Database not available");
-      }
-
-      try {
-        // 获取已存在的符号
-        const existing = await db
-          .select({ symbol: watchlist.symbol })
-          .from(watchlist)
-          .where(eq(watchlist.localUserId, input.localUserId));
-
-        const existingSymbols = new Set(existing.map(e => e.symbol));
-
-        // 过滤出需要添加的符号
-        const toAdd = input.symbols.filter(s => !existingSymbols.has(s));
-
-        if (toAdd.length === 0) {
-          return { success: true, added: 0 };
-        }
-
-        // 批量插入
-        await db.insert(watchlist).values(
-          toAdd.map(symbol => ({
-            localUserId: input.localUserId,
-            symbol,
-          } as InsertWatchlist))
-        );
-
-        return { success: true, added: toAdd.length };
-      } catch (error) {
-        console.error("[Watchlist] Failed to add multiple to watchlist:", error);
-        throw error;
-      }
-    }),
+  clearWatchlist: localProtectedProcedure.mutation(async ({ ctx }) => {
+    const db = await getDb();
+    if (!db) throw new Error("Database not available");
+    await db.delete(watchlist).where(eq(watchlist.localUserId, ctx.localUser.id));
+    return { success: true };
+  }),
 });

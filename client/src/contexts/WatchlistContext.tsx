@@ -23,19 +23,24 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
   // 在组件函数体内调用 useUtils Hook
   const utils = trpc.useUtils();
 
-  // 从 localStorage 获取 localUserId
+  // 从 localStorage 获取 localUserId，并响应注册、登录和注销后的会话变化。
   useEffect(() => {
-    const stored = localStorage.getItem('localUserId');
-    if (stored) {
-      setLocalUserId(parseInt(stored, 10));
-    } else {
-      setIsLoading(false);
-    }
+    const syncLocalUser = () => {
+      const stored = localStorage.getItem('localUserId');
+      setLocalUserId(stored ? parseInt(stored, 10) : null);
+      if (!stored) {
+        setWatchlist([]);
+        setIsLoading(false);
+      }
+    };
+    syncLocalUser();
+    window.addEventListener('local-auth-changed', syncLocalUser);
+    return () => window.removeEventListener('local-auth-changed', syncLocalUser);
   }, []);
 
   // 获取用户自选股
   const { data: userWatchlist, isLoading: watchlistLoading } = trpc.watchlist.getWatchlist.useQuery(
-    localUserId ? { localUserId } : skipToken,
+    localUserId ? undefined : skipToken,
     { enabled: !!localUserId, retry: 1 }
   );
 
@@ -43,7 +48,8 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
   const addMutation = trpc.watchlist.addToWatchlist.useMutation({
     onSuccess: () => {
       if (localUserId) {
-        void utils.watchlist.getWatchlist.invalidate({ localUserId });
+        void utils.watchlist.getWatchlist.invalidate();
+        window.dispatchEvent(new Event('watchlist-tracking-updated'));
       }
     },
   });
@@ -52,7 +58,8 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
   const removeMutation = trpc.watchlist.removeFromWatchlist.useMutation({
     onSuccess: () => {
       if (localUserId) {
-        void utils.watchlist.getWatchlist.invalidate({ localUserId });
+        void utils.watchlist.getWatchlist.invalidate();
+        window.dispatchEvent(new Event('watchlist-tracking-updated'));
       }
     },
   });
@@ -61,7 +68,8 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
   const toggleMutation = trpc.watchlist.toggleWatchlist.useMutation({
     onSuccess: () => {
       if (localUserId) {
-        void utils.watchlist.getWatchlist.invalidate({ localUserId });
+        void utils.watchlist.getWatchlist.invalidate();
+        window.dispatchEvent(new Event('watchlist-tracking-updated'));
       }
     },
   });
@@ -75,7 +83,8 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
       setMigrated(true);
       // 重新获取自选股列表
       if (localUserId) {
-        void utils.watchlist.getWatchlist.invalidate({ localUserId });
+        void utils.watchlist.getWatchlist.invalidate();
+        window.dispatchEvent(new Event('watchlist-tracking-updated'));
       }
     },
   });
@@ -92,6 +101,16 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
     }
   }, [userWatchlist]);
 
+  const syncTrackingMutation = trpc.watchlist.syncWatchlistTracking.useMutation({
+    onSuccess: () => window.dispatchEvent(new Event('watchlist-tracking-updated')),
+  });
+
+  useEffect(() => {
+    if (localUserId && userWatchlist) {
+      syncTrackingMutation.mutate();
+    }
+  }, [localUserId, userWatchlist]);
+
   // 初始化: 检查本地存储并迁移
   useEffect(() => {
     if (localUserId && !migrated) {
@@ -102,7 +121,7 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
           if (Array.isArray(parsed) && parsed.length > 0) {
             setLocalWatchlist(parsed);
             // 自动迁移本地数据到数据库
-            migrateMutation.mutate({ localUserId, symbols: parsed });
+            migrateMutation.mutate({ symbols: parsed });
           }
         } catch (e) {
           console.error('Failed to parse local watchlist:', e);
@@ -121,7 +140,7 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
     }
     if (!watchlist.includes(symbol)) {
       setWatchlist(prev => [...prev, symbol]);
-      addMutation.mutate({ localUserId, symbol });
+      addMutation.mutate({ symbol });
     }
   };
 
@@ -132,7 +151,7 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
       return;
     }
     setWatchlist(prev => prev.filter(s => s !== symbol));
-    removeMutation.mutate({ localUserId, symbol });
+    removeMutation.mutate({ symbol });
   };
 
   const isInWatchlist = (symbol: string) => {

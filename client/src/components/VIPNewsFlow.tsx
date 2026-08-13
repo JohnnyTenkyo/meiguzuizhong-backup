@@ -35,6 +35,11 @@ interface NewsItem {
   };
 }
 
+function getLocalAuthHeaders(): HeadersInit {
+  const token = window.localStorage.getItem("auth_token");
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
 type ContentTab = "original" | "truthsocial" | "news";
 
 // ============================================================
@@ -74,6 +79,8 @@ export default function VIPNewsFlow({ watchlistTickers = [] }: { watchlistTicker
   const [activeTab, setActiveTab] = useState<"vip" | "watchlist" | "custom">("vip");
   const [watchlistPeople, setWatchlistPeople] = useState<any[]>([]);
   const [customPeople, setCustomPeople] = useState<VIPPerson[]>([]);
+  const [customError, setCustomError] = useState("");
+  const [isSavingCustomPerson, setIsSavingCustomPerson] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("全部");
   const [showAddDialog, setShowAddDialog] = useState(false);
@@ -123,7 +130,44 @@ export default function VIPNewsFlow({ watchlistTickers = [] }: { watchlistTicker
       .catch(console.error);
   }, [watchlistTickers]);
 
-  // 获取自定义追踪人物
+  const loadCustomPeople = useCallback(async () => {
+    try {
+      setCustomError("");
+      const response = await fetch("/api/trpc/newsflow.getTrackedPeople", { headers: getLocalAuthHeaders() });
+      const data = await response.json();
+      const message = data?.error?.json?.message;
+      if (!response.ok || message) throw new Error(message || "加载自定义追踪失败");
+      const list = data?.result?.data?.json || data?.result?.data || [];
+      const formattedList = Array.isArray(list) ? list.map((p: any) => ({
+        id: `custom_${p.id}`,
+        name: p.name,
+        nameZh: p.nameZh || p.name,
+        title: p.title || "",
+        titleZh: p.titleZh || p.title || "",
+        org: "",
+        category: p.category,
+        avatarEmoji: p.avatarEmoji || "👤",
+        twitterHandle: p.twitterHandle,
+        truthSocialHandle: p.truthSocialHandle,
+        relatedTickers: [],
+        dbId: p.id,
+      })) : [];
+      setCustomPeople(formattedList);
+    } catch (error) {
+      console.error(error);
+      setCustomError(error instanceof Error ? error.message : "加载自定义追踪失败");
+    }
+  }, []);
+
+  // 获取自定义追踪人物，并在自选股自动关联更新后刷新。
+  useEffect(() => {
+    void loadCustomPeople();
+    const onTrackingUpdated = () => void loadCustomPeople();
+    window.addEventListener("watchlist-tracking-updated", onTrackingUpdated);
+    return () => window.removeEventListener("watchlist-tracking-updated", onTrackingUpdated);
+  }, [loadCustomPeople]);
+
+  /*
   useEffect(() => {
     fetch("/api/trpc/newsflow.getTrackedPeople")
       .then((r) => r.json())
@@ -146,7 +190,7 @@ export default function VIPNewsFlow({ watchlistTickers = [] }: { watchlistTicker
         setCustomPeople(formattedList);
       })
       .catch(console.error);
-  }, []);
+  }, []); */
 
   // 获取选中人物的内容
   const fetchPersonContent = useCallback(async (person: VIPPerson) => {
@@ -712,6 +756,9 @@ export default function VIPNewsFlow({ watchlistTickers = [] }: { watchlistTicker
                   </div>
                 ))
               )}
+              {customError && (
+                <div style={{ padding: "8px 12px", color: "#fca5a5", fontSize: 12 }}>{customError}</div>
+              )}
             </>
           )}
         </div>
@@ -1216,17 +1263,22 @@ export default function VIPNewsFlow({ watchlistTickers = [] }: { watchlistTicker
               <div style={{ display: "flex", gap: 12, marginTop: 8 }}>
                 <button
                   onClick={() => {
-                    if (!newPerson.name) {
-                      alert("请输入姓名（英文）");
+                    if (!newPerson.name && !newPerson.twitterHandle && !newPerson.truthSocialHandle) {
+                      alert("请至少填写姓名、X 账号或 Truth Social 账号");
                       return;
                     }
+                    setIsSavingCustomPerson(true);
                     fetch("/api/trpc/newsflow.addTrackedPerson", {
                       method: "POST",
-                      headers: { "Content-Type": "application/json" },
+                      headers: { "Content-Type": "application/json", ...getLocalAuthHeaders() },
                       body: JSON.stringify({ json: newPerson }),
                     })
                       .then((r) => r.json())
-                      .then(() => {
+                      .then(async (data) => {
+                        const message = data?.error?.json?.message;
+                        if (message || data?.result?.data?.json?.success === false) {
+                          throw new Error(message || "添加失败，请重试");
+                        }
                         setShowAddDialog(false);
                         setNewPerson({
                           name: "",
@@ -1238,32 +1290,14 @@ export default function VIPNewsFlow({ watchlistTickers = [] }: { watchlistTicker
                           category: "其他",
                           avatarEmoji: "👤",
                         });
-                        // 重新加载自定义人物列表
-                        fetch("/api/trpc/newsflow.getTrackedPeople")
-                          .then((r) => r.json())
-                          .then((data) => {
-                            const list = data?.result?.data?.json || data?.result?.data || [];
-                            const formattedList = Array.isArray(list) ? list.map((p: any) => ({
-                              id: `custom_${p.id}`,
-                              name: p.name,
-                              nameZh: p.nameZh || p.name,
-                              title: p.title || "",
-                              titleZh: p.titleZh || p.title || "",
-                              org: "",
-                              category: p.category,
-                              avatarEmoji: p.avatarEmoji || "👤",
-                              twitterHandle: p.twitterHandle,
-                              truthSocialHandle: p.truthSocialHandle,
-                              relatedTickers: [],
-                              dbId: p.id,
-                            })) : [];
-                            setCustomPeople(formattedList);
-                          });
+                        await loadCustomPeople();
+                        setActiveTab("custom");
                       })
                       .catch((err) => {
                         console.error(err);
-                        alert("添加失败，请重试");
-                      });
+                        alert(err instanceof Error ? err.message : "添加失败，请重试");
+                      })
+                      .finally(() => setIsSavingCustomPerson(false));
                   }}
                   style={{
                     flex: 1,
@@ -1277,7 +1311,7 @@ export default function VIPNewsFlow({ watchlistTickers = [] }: { watchlistTicker
                     cursor: "pointer",
                   }}
                 >
-                  添加
+                  {isSavingCustomPerson ? "保存中..." : "添加"}
                 </button>
                 <button
                   onClick={() => {

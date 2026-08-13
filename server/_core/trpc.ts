@@ -27,6 +27,24 @@ const requireUser = t.middleware(async opts => {
 
 export const protectedProcedure = t.procedure.use(requireUser);
 
+const requireLocalUser = t.middleware(async opts => {
+  const { ctx, next } = opts;
+
+  if (!ctx.localUser) {
+    throw new TRPCError({ code: "UNAUTHORIZED", message: UNAUTHED_ERR_MSG });
+  }
+
+  return next({
+    ctx: {
+      ...ctx,
+      localUser: ctx.localUser,
+    },
+  });
+});
+
+/** 用于自托管用户名/密码会话的受保护接口。 */
+export const localProtectedProcedure = t.procedure.use(requireLocalUser);
+
 export const adminProcedure = t.procedure.use(
   t.middleware(async opts => {
     const { ctx, next } = opts;

@@ -294,7 +294,7 @@ export default function Home() {
 
         {/* Quantitative Backtest Platform entry */}
         <a
-          href="https://mglhscan-czxnfpjg.manus.space"
+          href="http://mglh.cc.cd/"
           target="_blank"
           rel="noopener noreferrer"
           className="rounded-lg border border-purple-500/30 bg-purple-500/5 px-4 py-3 flex items-center justify-between cursor-pointer hover:bg-purple-500/10 transition-colors"
@@ -311,7 +311,7 @@ export default function Home() {
 
         {/* Automated Strategy Backtest Platform entry */}
         <a
-          href="https://tzlh7.manus.space/"
+          href="https://tzlh.cc.cd/cache"
           target="_blank"
           rel="noopener noreferrer"
           className="rounded-lg border border-rose-500/30 bg-rose-500/5 px-4 py-3 flex items-center justify-between cursor-pointer hover:bg-rose-500/10 transition-colors"
