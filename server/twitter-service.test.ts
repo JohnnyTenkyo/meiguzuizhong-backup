@@ -12,5 +12,7 @@ describe("Twitter information-flow service", () => {
     expect(service).toContain("client.get_user_by_screen_name(username)");
     expect(service).toContain("client.get_user_tweets(user_id");
     expect(service).toContain("impersonate='chrome124'");
+    expect(service).toContain("raw_tweets = getattr(result, 'data', None)");
+    expect(service).toContain("raw_tweets = list(result)");
   });
 });

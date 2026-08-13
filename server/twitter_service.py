@@ -101,12 +101,15 @@ def get_tweets():
                     # 获取用户推文（仅原创推文）
                     result = await client.get_user_tweets(user_id, tweet_type='Tweets', count=count)
                     
-                    if not result or not result.data:
+                    raw_tweets = getattr(result, 'data', None)
+                    if raw_tweets is None and result:
+                        raw_tweets = list(result)
+                    if not raw_tweets:
                         logger.warning(f"[Twitter Service] No tweets found for @{username}")
                         return []
                     
                     tweets = []
-                    for tweet in result.data:
+                    for tweet in raw_tweets:
                         try:
                             tweet_data = {
                                 'id': str(tweet.id) if hasattr(tweet, 'id') else '',
