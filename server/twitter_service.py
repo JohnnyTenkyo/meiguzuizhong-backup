@@ -10,6 +10,7 @@ import logging
 from typing import List, Dict, Any
 import asyncio
 import os
+import threading
 from twikit import Client
 
 # 配置日志
@@ -20,8 +21,33 @@ app = Flask(__name__)
 
 # 全局 Twitter 客户端
 twitter_client = None
+twitter_loop = None
+twitter_loop_thread = None
+twitter_loop_lock = threading.Lock()
 
-def get_client():
+def _run_twitter_event_loop(loop):
+    """在专用后台线程中持续运行 twifork 所属的事件循环。"""
+    asyncio.set_event_loop(loop)
+    loop.run_forever()
+
+def get_twitter_event_loop():
+    """返回唯一的长期事件循环，避免每次 Flask 请求创建并关闭新的循环。"""
+    global twitter_loop, twitter_loop_thread
+
+    with twitter_loop_lock:
+        if twitter_loop is None or twitter_loop.is_closed():
+            twitter_loop = asyncio.new_event_loop()
+            twitter_loop_thread = threading.Thread(
+                target=_run_twitter_event_loop,
+                args=(twitter_loop,),
+                name='twitter-event-loop',
+                daemon=True,
+            )
+            twitter_loop_thread.start()
+
+    return twitter_loop
+
+async def get_client():
     """获取或创建 Twitter 客户端"""
     global twitter_client
     
@@ -64,6 +90,11 @@ def get_client():
     
     return twitter_client
 
+def run_on_twitter_loop(coroutine):
+    """将 twifork 协程固定提交到创建客户端的同一个长期事件循环。"""
+    future = asyncio.run_coroutine_threadsafe(coroutine, get_twitter_event_loop())
+    return future.result(timeout=70)
+
 @app.route('/health', methods=['GET'])
 def health():
     """健康检查"""
@@ -81,15 +112,14 @@ def get_tweets():
         
         logger.info(f"[Twitter Service] Fetching {count} tweets for @{username}")
         
-        client = get_client()
-        if not client:
-            return jsonify({'error': 'Failed to initialize Twitter client'}), 500
-        
         try:
             # 异步函数包装
             async def fetch_tweets():
                 try:
                     logger.info(f"[Twitter Service] Fetching tweets for @{username}...")
+                    client = await get_client()
+                    if not client:
+                        return []
                     
                     # twikit 的 get_user_tweets 需要用户 ID，不能直接传 screen name。
                     user = await client.get_user_by_screen_name(username)
@@ -140,8 +170,8 @@ def get_tweets():
                     traceback.print_exc()
                     return []
             
-            # 运行异步函数
-            tweets = asyncio.run(fetch_tweets())
+            # 提交至长期运行的 twifork 事件循环，避免 curl_cffi Future 绑定到已关闭循环。
+            tweets = run_on_twitter_loop(fetch_tweets())
             
             return jsonify({'tweets': tweets})
             
@@ -168,14 +198,14 @@ def get_user():
         
         logger.info(f"[Twitter Service] Fetching user profile for @{username}")
         
-        client = get_client()
-        if not client:
-            return jsonify({'error': 'Failed to initialize Twitter client'}), 500
-        
         try:
             # 异步函数包装
             async def fetch_user():
                 try:
+                    client = await get_client()
+                    if not client:
+                        return None
+
                     # 获取用户信息
                     user = await client.get_user_by_screen_name(username)
                     
@@ -200,8 +230,8 @@ def get_user():
                     traceback.print_exc()
                     return None
             
-            # 运行异步函数
-            user_data = asyncio.run(fetch_user())
+            # 与推文读取共用同一个长期事件循环与 twifork 客户端。
+            user_data = run_on_twitter_loop(fetch_user())
             
             if user_data:
                 logger.info(f"[Twitter Service] Successfully fetched user profile for @{username}")

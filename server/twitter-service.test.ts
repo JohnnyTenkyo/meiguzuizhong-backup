@@ -14,5 +14,9 @@ describe("Twitter information-flow service", () => {
     expect(service).toContain("impersonate='chrome124'");
     expect(service).toContain("raw_tweets = getattr(result, 'data', None)");
     expect(service).toContain("raw_tweets = list(result)");
+    expect(service).toContain("asyncio.run_coroutine_threadsafe");
+    expect(service).toContain("async def get_client()");
+    expect(service).not.toContain("asyncio.run(fetch_tweets())");
+    expect(service).not.toContain("asyncio.run(fetch_user())");
   });
 });
