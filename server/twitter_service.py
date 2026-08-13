@@ -89,8 +89,15 @@ def get_tweets():
                 try:
                     logger.info(f"[Twitter Service] Fetching tweets for @{username}...")
                     
+                    # twikit 的 get_user_tweets 需要用户 ID，不能直接传 screen name。
+                    user = await client.get_user_by_screen_name(username)
+                    user_id = str(user.id) if user and hasattr(user, 'id') else ''
+                    if not user_id:
+                        logger.warning(f"[Twitter Service] User @{username} not found")
+                        return []
+
                     # 获取用户推文（仅原创推文）
-                    result = await client.get_user_tweets(username, tweet_type='Tweets', count=count)
+                    result = await client.get_user_tweets(user_id, tweet_type='Tweets', count=count)
                     
                     if not result or not result.data:
                         logger.warning(f"[Twitter Service] No tweets found for @{username}")
